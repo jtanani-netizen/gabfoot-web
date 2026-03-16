@@ -1,3 +1,13 @@
+---
+title: GABFOOT
+emoji: "⚽"
+colorFrom: green
+colorTo: gray
+sdk: docker
+app_port: 7860
+fullWidth: true
+---
+
 # Analyseur de match football
 
 Analyse locale en Python d'un match entre deux equipes a partir de sources gratuites.
@@ -45,6 +55,38 @@ Dashboard operationnel:
 
 ```text
 http://127.0.0.1:8012/dashboard
+```
+
+## Deploiement gratuit sur Hugging Face Spaces
+
+Le projet est pret pour un Space Docker.
+
+Etapes:
+
+1. cree un compte sur `https://huggingface.co/join`;
+2. ouvre `https://huggingface.co/new-space`;
+3. choisis:
+   - owner: ton compte
+   - space name: `gabfoot-web`
+   - license: laisse vide ou choisis celle que tu veux
+   - SDK: `Docker`
+   - visibility: `Public`
+4. cree le Space;
+5. dans `Settings` > `Variables and secrets`, ajoute:
+   - variable `GABFOOT_PUBLIC_URL` avec la valeur `https://<ton-space>.hf.space`
+   - secret `TELEGRAM_BOT_TOKEN` si tu veux Telegram
+   - secret `TELEGRAM_CHAT_ID` si tu veux Telegram
+6. envoie ensuite le code du repo vers le Space.
+
+Le `README.md` contient deja le bloc YAML `sdk: docker`, et le `Dockerfile` expose le port `7860` attendu par Hugging Face Spaces.
+
+Endpoints utiles apres mise en ligne:
+
+```text
+/
+/dashboard
+/articles
+/healthz
 ```
 
 ## Deploiement gratuit sur Render
