@@ -6,14 +6,14 @@ Le projet GABFOOT est maintenant sauvegarde et deploye.
 
 Informations principales:
 - Repo GitHub: https://github.com/jtanani-netizen/gabfoot-web
-- Space Hugging Face: https://huggingface.co/spaces/tjibril1983/gabfoot-web
-- Site public: https://tjibril1983-gabfoot-web.hf.space
+- Space Hugging Face: https://huggingface.co/spaces/gabfootlive/app
+- Site public: https://gabfootlive-app.hf.space
 - Dossier local: /home/jibril/gabfoot-web-upload-20260316
 
 Etat actuel:
 - Le site repond sur /, /dashboard, /articles et /healthz
 - Deploiement en Docker sur Hugging Face Spaces
-- URL publique configuree: https://tjibril1983-gabfoot-web.hf.space
+- URL publique configuree: https://gabfootlive-app.hf.space
 
 Pour reprendre plus tard:
 - Ouvrir le repo local ou GitHub
