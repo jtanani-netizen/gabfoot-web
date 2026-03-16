@@ -965,36 +965,52 @@ def landing_html(
     icon_url = absolute_url(site_url, "/icon.png") if site_url else "/icon.png"
     canonical_tag = f'<link rel="canonical" href="{html.escape(canonical_url)}">' if canonical_url else ""
     og_url_tag = f'<meta property="og:url" content="{html.escape(canonical_url)}">' if canonical_url else ""
-    notice_html = f'<div class="site-notice">{html.escape(notice)}</div>' if notice else ""
+    notice_html = f'<div class="alert-banner">{html.escape(notice)}</div>' if notice else ""
     poster_visual = (
-        '<img class="site-poster-image" src="/image" alt="Affiche Telegram GABFOOT">'
+        '<img class="poster-visual" src="/image" alt="Affiche Telegram GABFOOT">'
         if card_path and card_path.exists()
-        else '<div class="site-poster-fallback">Poster Telegram pret a etre genere</div>'
+        else '<div class="poster-visual poster-visual-fallback">Poster Telegram pret a sortir</div>'
     )
+    market_strip = render_market_strip(matches, botola)
     featured_match_html = ""
     if featured_match:
         featured_match_html = f"""
-        <div class="hero-feature-card">
-          <div class="hero-feature-topline">Top signal du moment</div>
+        <article class="hero-card signal-card">
+          <div class="mini-label">Signal principal</div>
           <h3>{html.escape(featured_match.home_name)} <span>vs</span> {html.escape(featured_match.away_name)}</h3>
-          <div class="hero-feature-meta">{html.escape(featured_match.tournament_name)} • {html.escape(fmt_kickoff(featured_match.kickoff_utc))}</div>
-          <div class="hero-feature-badges">
+          <div class="signal-meta">{html.escape(featured_match.tournament_name)} • {html.escape(fmt_kickoff(featured_match.kickoff_utc))}</div>
+          <div class="signal-pill-row">
             <span>{html.escape(featured_match.prediction)} • {featured_match.sureness_percent}%</span>
             <span>{html.escape(featured_match.home_form)} | {html.escape(featured_match.away_form)}</span>
           </div>
           <p>{html.escape(' • '.join(featured_match.why[:3]))}</p>
-          <a class="ghost-site-btn" href="/match/{featured_match.match_id}">Voir l'analyse</a>
-        </div>
+          <a class="outline-btn" href="/match/{featured_match.match_id}">Voir la lecture complete</a>
+        </article>
         """
     featured_article_html = ""
     if featured_article:
+        article_image = str(featured_article.get("image", "")).strip()
+        article_visual = (
+            f'<img class="editorial-thumb" src="{html.escape(article_image)}" alt="{html.escape(featured_article["title"])}">'
+            if article_image
+            else '<div class="editorial-thumb editorial-thumb-fallback">NEWS</div>'
+        )
+        article_link = (
+            f'<a class="outline-btn" href="{html.escape(featured_article["url"])}" target="_blank" rel="noreferrer">Lire l&apos;article</a>'
+            if featured_article.get("url")
+            else ""
+        )
         featured_article_html = f"""
-        <div class="editorial-spot">
-          <div class="editorial-spot-topline">Editorial pulse</div>
-          <h3>{html.escape(featured_article["title"])}</h3>
-          <p>{html.escape(featured_article["summary"])}</p>
-          <div class="editorial-spot-meta">{html.escape(featured_article["team"])} • {html.escape(featured_article["source"])}</div>
-        </div>
+        <article class="hero-card editorial-card">
+          {article_visual}
+          <div class="editorial-copy">
+            <div class="mini-label">Pulse editorial</div>
+            <h3>{html.escape(featured_article["title"])}</h3>
+            <p>{html.escape(featured_article["summary"])}</p>
+            <div class="signal-meta">{html.escape(featured_article["team"])} • {html.escape(featured_article["source"])}</div>
+            {article_link}
+          </div>
+        </article>
         """
 
     return f"""<!doctype html>
@@ -1002,221 +1018,332 @@ def landing_html(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GABFOOT | Site Officiel Pronostics Foot</title>
-  <meta name="description" content="GABFOOT est la vitrine officielle des pronostics foot premium: dashboard, focus Botola, poster Telegram et selection de matchs a fort signal.">
-  <meta property="og:title" content="GABFOOT | Site Officiel Pronostics Foot">
-  <meta property="og:description" content="Une vitrine premium pour consulter les meilleurs signaux, ouvrir le dashboard et suivre la Botola, le tennis et les news foot.">
+  <title>GABFOOT | Studio Pronostics Foot</title>
+  <meta name="description" content="GABFOOT assemble une lecture premium des pronostics foot, des matchs les plus surs, de la Botola et des actualites dans une interface plus claire et plus moderne.">
+  <meta property="og:title" content="GABFOOT | Studio Pronostics Foot">
+  <meta property="og:description" content="Une vitrine premium pour ouvrir le dashboard GABFOOT, suivre les picks les plus solides et acceder aux flux Botola, tennis et editorial.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="{html.escape(icon_url)}">
   {og_url_tag}
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="GABFOOT | Site Officiel Pronostics Foot">
-  <meta name="twitter:description" content="Pronostics foot premium, dashboard live, Botola, Tennis World et poster Telegram.">
+  <meta name="twitter:title" content="GABFOOT | Studio Pronostics Foot">
+  <meta name="twitter:description" content="Un style plus premium pour les pronostics GABFOOT, la Botola, le dashboard live et le poster Telegram.">
   <meta name="twitter:image" content="{html.escape(icon_url)}">
-  <meta name="theme-color" content="#122018">
+  <meta name="theme-color" content="#183326">
   {canonical_tag}
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" href="/icon.png">
   <link rel="apple-touch-icon" href="/icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;700;800&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {{
-      --bg: #f4efe4;
-      --ink: #112018;
-      --muted: #5b6b60;
-      --panel: rgba(255, 250, 240, 0.82);
-      --panel-strong: #fff8ec;
-      --line: rgba(17, 32, 24, 0.10);
-      --accent: #205d48;
-      --accent-2: #c79a34;
-      --shadow: 0 22px 48px rgba(36, 45, 35, 0.12);
+      --canvas: #f4f0e7;
+      --canvas-2: #efe5d4;
+      --paper: rgba(255, 252, 246, 0.82);
+      --paper-strong: #fffdf8;
+      --ink: #10281f;
+      --ink-soft: #5f6f66;
+      --forest: #1e5b43;
+      --forest-deep: #14392b;
+      --gold: #c89a2b;
+      --terracotta: #c4512d;
+      --line: rgba(16, 40, 31, 0.10);
+      --line-strong: rgba(16, 40, 31, 0.18);
+      --shadow: 0 24px 60px rgba(19, 39, 30, 0.12);
+      --radius-xl: 34px;
+      --radius-lg: 26px;
+      --radius-md: 20px;
     }}
     * {{ box-sizing: border-box; }}
     html {{ scroll-behavior: smooth; }}
     body {{
       margin: 0;
-      font-family: "Manrope", "DejaVu Sans", sans-serif;
+      font-family: "Source Sans 3", "DejaVu Sans", sans-serif;
       color: var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(199,154,52,.16), transparent 22%),
-        radial-gradient(circle at 88% 12%, rgba(32,93,72,.12), transparent 20%),
-        linear-gradient(180deg, #fbf7ef 0%, #f3ead7 100%);
+        radial-gradient(circle at 0% 0%, rgba(200,154,43,.18), transparent 28%),
+        radial-gradient(circle at 100% 10%, rgba(30,91,67,.12), transparent 22%),
+        linear-gradient(180deg, var(--canvas) 0%, var(--canvas-2) 100%);
     }}
     a {{ color: inherit; }}
-    .site-shell {{ max-width: 1280px; margin: 0 auto; padding: 22px 18px 46px; }}
-    .site-topbar {{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 18px; }}
-    .site-brand {{ display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--ink); }}
+    .site-shell {{ max-width: 1320px; margin: 0 auto; padding: 24px 18px 46px; }}
+    .site-topbar {{
+      display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 18px;
+      padding: 12px 16px; border-radius: 24px; border:1px solid rgba(255,255,255,.48);
+      background: rgba(255,255,255,.48); backdrop-filter: blur(14px);
+    }}
+    .site-brand {{ display:flex; align-items:center; gap:14px; text-decoration:none; color:var(--ink); }}
     .site-brand-mark {{
-      width:46px; height:46px; border-radius:14px; display:grid; place-items:center;
-      font-family:"Bebas Neue", sans-serif; font-size:28px; letter-spacing:.08em;
-      background:linear-gradient(135deg, #1f5e48, #d4a03b); color:#fff7ea; box-shadow: var(--shadow);
+      width:52px; height:52px; border-radius:16px; display:grid; place-items:center;
+      font-family:"Bricolage Grotesque", sans-serif; font-size:24px; font-weight:800;
+      background:linear-gradient(135deg, var(--forest), var(--gold)); color:#fff7ea; box-shadow: var(--shadow);
     }}
     .site-brand-copy strong {{
-      display:block; font-family:"Bebas Neue", sans-serif; letter-spacing:.08em; font-size:28px; line-height:1;
+      display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:24px; line-height:1; letter-spacing:.02em;
     }}
-    .site-brand-copy span {{ color:var(--muted); font-size:13px; line-height:1.4; }}
-    .site-nav {{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }}
+    .site-brand-copy span {{ display:block; margin-top:4px; color:var(--ink-soft); font-size:13px; line-height:1.45; }}
+    .site-nav {{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }}
     .site-nav a {{
-      text-decoration:none; min-height:42px; display:inline-flex; align-items:center; padding:0 16px; border-radius:999px;
-      border:1px solid var(--line); background:rgba(255,255,255,.56); font-size:13px; font-weight:800;
+      min-height:42px; padding:0 16px; display:inline-flex; align-items:center; justify-content:center;
+      border-radius:999px; text-decoration:none; font-size:13px; font-weight:800;
+      border:1px solid var(--line); background:rgba(255,255,255,.64);
       transition:transform .18s ease, border-color .18s ease, background .18s ease;
     }}
-    .site-nav a:hover {{ transform:translateY(-1px); border-color:rgba(32,93,72,.24); background:#fffdf8; }}
-    .site-nav .site-nav-cta {{ color:#fff8ee; background:linear-gradient(90deg, #1f5e48, #d4a03b); border-color:transparent; }}
+    .site-nav a:hover {{ transform:translateY(-1px); border-color:var(--line-strong); background:var(--paper-strong); }}
+    .site-nav .site-nav-cta {{
+      color:#fff7ea; border-color:transparent;
+      background:linear-gradient(90deg, var(--forest), var(--gold));
+      box-shadow: 0 16px 28px rgba(30,91,67,.18);
+    }}
     .hero-stage {{
-      position:relative; overflow:hidden; display:grid; grid-template-columns: 1.05fr .95fr; gap:22px; padding:28px;
-      border-radius:34px; border:1px solid rgba(17,32,24,.08);
-      background:radial-gradient(circle at 20% 0%, rgba(223,109,62,.12), transparent 26%), linear-gradient(135deg, rgba(255,251,242,.96), rgba(246,236,214,.98));
+      position:relative; overflow:hidden; display:grid; grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr); gap:24px;
+      padding:30px; border-radius:var(--radius-xl); border:1px solid rgba(255,255,255,.50);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(200,154,43,.16), transparent 28%),
+        radial-gradient(circle at 100% 16%, rgba(30,91,67,.16), transparent 22%),
+        linear-gradient(135deg, rgba(255,251,245,.96), rgba(246,236,221,.98));
       box-shadow: var(--shadow);
     }}
-    .hero-stage::after {{
-      content:""; position:absolute; right:-50px; top:-50px; width:240px; height:240px; border-radius:50%;
-      background:radial-gradient(circle, rgba(32,93,72,.12), transparent 66%); pointer-events:none;
+    .hero-stage::before {{
+      content:""; position:absolute; inset:auto -90px -90px auto; width:260px; height:260px; border-radius:50%;
+      background: radial-gradient(circle, rgba(30,91,67,.12), transparent 68%);
+      pointer-events:none;
+      animation: driftGlow 6s ease-in-out infinite;
     }}
-    .hero-copy {{ position:relative; z-index:1; display:flex; flex-direction:column; gap:20px; }}
-    .hero-kicker {{
-      display:inline-flex; width:max-content; min-height:34px; padding:0 12px; align-items:center; border-radius:999px;
-      background:rgba(199,154,52,.14); color:#7c5820; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    .hero-copy, .hero-side {{ position:relative; z-index:1; }}
+    .hero-copy {{ display:flex; flex-direction:column; gap:18px; }}
+    .eyebrow {{
+      display:inline-flex; width:max-content; min-height:34px; align-items:center; padding:0 12px;
+      border-radius:999px; background:rgba(200,154,43,.14); color:#885f1b;
+      font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
     }}
     .hero-copy h1 {{
-      margin:0; font-family:"Bebas Neue", sans-serif; font-size: clamp(56px, 8vw, 108px); line-height:.92; letter-spacing:.04em; max-width: 760px;
+      margin:0; font-family:"Bricolage Grotesque", sans-serif;
+      font-size:clamp(3.6rem, 7vw, 6.6rem); line-height:.92; letter-spacing:-.03em; max-width: 780px;
     }}
-    .hero-copy p {{ margin:0; max-width: 640px; color:var(--muted); font-size:17px; line-height:1.65; }}
+    .hero-copy p {{
+      margin:0; max-width: 690px; color:var(--ink-soft); font-size:18px; line-height:1.65;
+    }}
     .hero-actions {{ display:flex; gap:12px; flex-wrap:wrap; }}
-    .hero-rail {{ display:flex; gap:10px; flex-wrap:wrap; }}
-    .hero-rail span {{
-      min-height:38px;
-      display:inline-flex;
-      align-items:center;
-      padding:0 14px;
-      border-radius:999px;
-      background:rgba(255,255,255,.62);
-      border:1px solid rgba(17,32,24,.08);
-      color:var(--muted);
-      font-size:13px;
-      font-weight:800;
+    .site-btn, .ghost-site-btn, .outline-btn {{
+      min-height:50px; padding:0 18px; border-radius:16px; display:inline-flex; align-items:center; justify-content:center;
+      text-decoration:none; font-weight:800; transition:transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
     }}
-    .site-btn, .ghost-site-btn {{
-      min-height:50px; padding:0 18px; border-radius:16px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-weight:800;
-      transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+    .site-btn {{
+      color:#fff7ea; background:linear-gradient(90deg, var(--forest), var(--gold));
+      box-shadow: 0 16px 32px rgba(30,91,67,.18);
     }}
-    .site-btn {{ background:linear-gradient(90deg, #205d48, #d4a03b); color:#fff7ea; box-shadow:0 16px 32px rgba(32,93,72,.18); }}
-    .ghost-site-btn {{ background:rgba(255,255,255,.66); border:1px solid var(--line); color:var(--ink); }}
-    .site-btn:hover, .ghost-site-btn:hover {{ transform:translateY(-1px); }}
-    .hero-facts {{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }}
-    .hero-fact {{ padding:14px; border-radius:20px; border:1px solid rgba(17,32,24,.08); background:rgba(255,255,255,.58); }}
+    .ghost-site-btn, .outline-btn {{
+      background:rgba(255,255,255,.72); border:1px solid var(--line); color:var(--ink);
+    }}
+    .site-btn:hover, .ghost-site-btn:hover, .outline-btn:hover {{ transform:translateY(-1px); }}
+    .hero-facts {{
+      display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px;
+    }}
+    .hero-fact {{
+      padding:16px; border-radius:22px; border:1px solid rgba(255,255,255,.48);
+      background:linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.56));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.56);
+    }}
     .hero-fact strong {{
-      display:block; font-size:30px; line-height:1; font-family:"Bebas Neue", sans-serif; letter-spacing:.05em; color:var(--accent);
+      display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:34px; line-height:1; color:var(--forest);
     }}
-    .hero-fact span {{ display:block; margin-top:8px; color:var(--muted); font-size:13px; line-height:1.45; }}
-    .hero-aside {{ position:relative; z-index:1; display:grid; gap:14px; }}
-    .hero-feature-card, .editorial-spot, .site-poster-card {{
-      padding:20px; border-radius:24px; border:1px solid rgba(17,32,24,.08); background:rgba(255,255,255,.72); box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
+    .hero-fact span {{ display:block; margin-top:8px; color:var(--ink-soft); font-size:14px; line-height:1.45; }}
+    .market-strip {{
+      display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none;
     }}
-    .hero-feature-topline, .editorial-spot-topline, .section-topline {{
-      color:#8d6424; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    .market-strip::-webkit-scrollbar {{ display:none; }}
+    .market-pill {{
+      min-width:220px; padding:14px 16px; border-radius:18px; border:1px solid rgba(16,40,31,.10);
+      background:rgba(255,255,255,.72); box-shadow: inset 0 1px 0 rgba(255,255,255,.56);
     }}
-    .hero-feature-card h3, .editorial-spot h3 {{ margin:12px 0 8px; font-size:28px; line-height:1.1; }}
-    .hero-feature-card h3 span {{ color:var(--muted); font-size:18px; font-weight:700; }}
-    .hero-feature-meta, .editorial-spot-meta {{ color:var(--muted); font-size:13px; }}
-    .hero-feature-badges {{ display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }}
-    .hero-feature-badges span {{
-      min-height:34px; display:inline-flex; align-items:center; padding:0 12px; border-radius:999px; background:rgba(32,93,72,.08); color:var(--accent); font-size:13px; font-weight:800;
+    .market-pill-label {{
+      display:block; color:var(--ink-soft); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
     }}
-    .hero-feature-card p, .editorial-spot p {{ margin:14px 0 0; color:var(--muted); font-size:14px; line-height:1.6; }}
-    .site-poster-card {{ display:grid; grid-template-columns: 170px 1fr; gap:16px; align-items:center; }}
-    .site-poster-image, .site-poster-fallback {{
-      width:170px; height:212px; border-radius:20px; object-fit:cover; border:1px solid rgba(17,32,24,.08); background:#183227; color:#f7ead2;
-      display:flex; align-items:center; justify-content:center; text-align:center; font-weight:800; line-height:1.5; padding:18px;
+    .market-pill-value {{
+      display:block; margin-top:8px; font-size:18px; font-weight:800; color:var(--ink);
     }}
-    .site-poster-copy h3 {{ margin:12px 0 8px; font-size:24px; line-height:1.1; }}
-    .site-poster-copy p {{ margin:0; color:var(--muted); font-size:14px; line-height:1.6; }}
-    .site-notice {{
-      margin-top:18px; padding:14px 16px; border-radius:16px; border:1px solid rgba(223,109,62,.18); background:rgba(223,109,62,.08); color:#8f4d2f; font-size:14px; line-height:1.55;
+    .alert-banner {{
+      padding:14px 16px; border-radius:18px; border:1px solid rgba(196,81,45,.18);
+      background:rgba(196,81,45,.08); color:#8c4529; font-size:14px; line-height:1.55;
+    }}
+    .hero-side {{ display:grid; gap:14px; }}
+    .hero-card {{
+      border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.52);
+      background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.58));
+      box-shadow: var(--shadow); backdrop-filter: blur(10px);
+    }}
+    .signal-card, .poster-card {{ padding:20px; }}
+    .mini-label {{
+      color:#8a611d; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    }}
+    .signal-card h3, .poster-copy h3, .editorial-copy h3 {{
+      margin:12px 0 8px; font-family:"Bricolage Grotesque", sans-serif; font-size:30px; line-height:1; letter-spacing:-.03em;
+    }}
+    .signal-card h3 span {{ color:var(--ink-soft); font-size:18px; font-weight:700; }}
+    .signal-meta {{ color:var(--ink-soft); font-size:13px; line-height:1.5; }}
+    .signal-pill-row {{
+      display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;
+    }}
+    .signal-pill-row span {{
+      min-height:34px; display:inline-flex; align-items:center; padding:0 12px; border-radius:999px;
+      background:rgba(30,91,67,.08); color:var(--forest); font-size:13px; font-weight:800;
+    }}
+    .signal-card p, .poster-copy p, .editorial-copy p {{
+      margin:14px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.6;
+    }}
+    .poster-card {{
+      display:grid; grid-template-columns:170px 1fr; gap:16px; align-items:center;
+      background:linear-gradient(135deg, rgba(20,57,43,.96), rgba(35,84,60,.92));
+      color:#f7f4ea;
+    }}
+    .poster-card .mini-label {{ color:#f6d998; }}
+    .poster-copy p {{ color:rgba(247,244,234,.78); }}
+    .poster-visual {{
+      width:170px; height:220px; border-radius:22px; object-fit:cover; display:block;
+      border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    }}
+    .poster-visual-fallback {{
+      display:flex; align-items:center; justify-content:center; text-align:center; padding:18px; font-weight:800; line-height:1.55;
+    }}
+    .editorial-card {{
+      display:grid; grid-template-columns:140px 1fr; gap:16px; align-items:center; padding:16px;
+    }}
+    .editorial-thumb {{
+      width:140px; height:140px; object-fit:cover; border-radius:20px; display:block; background:var(--forest-deep);
+    }}
+    .editorial-thumb-fallback {{
+      display:flex; align-items:center; justify-content:center; color:#f8ebd0; font-weight:800; letter-spacing:.08em;
     }}
     .section-block {{
-      margin-top:22px; padding:24px; border-radius:30px; border:1px solid rgba(17,32,24,.08); background:var(--panel); box-shadow: var(--shadow); backdrop-filter: blur(16px);
+      margin-top:22px; padding:24px; border-radius:var(--radius-xl); border:1px solid rgba(255,255,255,.44);
+      background:var(--paper); box-shadow: var(--shadow); backdrop-filter: blur(14px);
     }}
-    .section-head {{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:18px; }}
+    .section-head {{
+      display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin-bottom:18px;
+    }}
     .section-head h2 {{
-      margin:10px 0 0; font-family:"Bebas Neue", sans-serif; letter-spacing:.05em; font-size:44px; line-height:.95;
+      margin:10px 0 0; font-family:"Bricolage Grotesque", sans-serif; font-size:52px; line-height:.92; letter-spacing:-.04em;
     }}
-    .section-head p {{ max-width: 540px; margin:0; color:var(--muted); font-size:15px; line-height:1.6; }}
-    .offer-grid {{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; }}
-    .offer-card {{ padding:20px; border-radius:24px; background:var(--panel-strong); border:1px solid rgba(17,32,24,.08); min-height:190px; }}
-    .offer-card strong {{ display:block; font-size:18px; margin-top:12px; }}
-    .offer-card p {{ margin:12px 0 0; color:var(--muted); font-size:14px; line-height:1.65; }}
+    .section-head p {{ max-width:560px; margin:0; color:var(--ink-soft); font-size:15px; line-height:1.6; }}
+    .offer-grid {{
+      display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px;
+    }}
+    .offer-card {{
+      min-height:210px; padding:20px; border-radius:24px; border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,250,241,.92));
+    }}
     .offer-index {{
-      width:44px; height:44px; display:grid; place-items:center; border-radius:14px; background:linear-gradient(135deg, rgba(32,93,72,.12), rgba(199,154,52,.18));
-      font-family:"Bebas Neue", sans-serif; font-size:24px; color:var(--accent); letter-spacing:.06em;
+      width:46px; height:46px; display:grid; place-items:center; border-radius:16px;
+      font-family:"Bricolage Grotesque", sans-serif; font-size:22px; font-weight:800;
+      background:linear-gradient(135deg, rgba(30,91,67,.14), rgba(200,154,43,.20)); color:var(--forest);
     }}
-    .preview-grid {{ display:grid; grid-template-columns:1.05fr .95fr; gap:16px; align-items:start; }}
+    .offer-card strong {{ display:block; margin-top:14px; font-size:20px; }}
+    .offer-card p {{ margin:10px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.62; }}
+    .preview-grid {{ display:grid; grid-template-columns:1.04fr .96fr; gap:16px; align-items:start; }}
     .landing-stack, .landing-news-grid {{ display:grid; gap:14px; }}
-    .landing-pick-card {{ padding:18px; border-radius:24px; border:1px solid rgba(17,32,24,.08); background:#fffdf7; box-shadow: inset 0 1px 0 rgba(255,255,255,.7); }}
-    .landing-pick-card.pick-home {{ background:linear-gradient(135deg, rgba(223,249,239,.92), #fffdf7); }}
-    .landing-pick-card.pick-away {{ background:linear-gradient(135deg, rgba(228,238,252,.92), #fffdf7); }}
-    .landing-pick-card.pick-draw {{ background:linear-gradient(135deg, rgba(253,243,214,.92), #fffdf7); }}
+    .landing-pick-card {{
+      padding:18px; border-radius:24px; border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,252,246,.92));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.68);
+    }}
+    .landing-pick-card.pick-home {{ background:linear-gradient(135deg, rgba(227,246,238,.95), rgba(255,252,246,.95)); }}
+    .landing-pick-card.pick-away {{ background:linear-gradient(135deg, rgba(230,238,252,.95), rgba(255,252,246,.95)); }}
+    .landing-pick-card.pick-draw {{ background:linear-gradient(135deg, rgba(252,243,216,.95), rgba(255,252,246,.95)); }}
     .landing-pick-top {{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }}
-    .landing-kickoff {{ color:#8d6424; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }}
-    .landing-pick-card h3 {{ margin:10px 0 8px; font-size:24px; line-height:1.12; }}
-    .landing-pick-card h3 span {{ font-size:16px; font-weight:700; color:var(--muted); }}
-    .landing-league {{ color:var(--muted); font-size:14px; }}
-    .landing-pick-card .pick-badge {{ min-width:82px; background:rgba(17,32,24,.05); border:1px solid rgba(17,32,24,.08); }}
-    .landing-pick-card .pick-value {{ color:var(--accent); }}
-    .landing-pick-card p {{ margin:14px 0 0; color:var(--muted); font-size:14px; line-height:1.6; }}
+    .landing-kickoff {{ color:#89611c; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }}
+    .landing-pick-card h3 {{ margin:10px 0 8px; font-family:"Bricolage Grotesque", sans-serif; font-size:26px; line-height:1.05; letter-spacing:-.03em; }}
+    .landing-pick-card h3 span {{ font-size:17px; font-weight:700; color:var(--ink-soft); }}
+    .landing-league {{ color:var(--ink-soft); font-size:14px; }}
+    .pick-badge {{
+      min-width:84px; padding:8px 10px; border-radius:18px; text-align:center;
+      background:rgba(255,255,255,.78); border:1px solid rgba(16,40,31,.10);
+    }}
+    .pick-value {{
+      display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:28px; font-weight:800; color:var(--forest); line-height:1;
+    }}
+    .pick-percent {{ display:block; margin-top:5px; color:var(--ink-soft); font-size:12px; font-weight:800; }}
+    .landing-pick-card p {{ margin:14px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.6; }}
     .landing-pick-meta {{
-      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; padding-top:14px; border-top:1px solid rgba(17,32,24,.08); color:var(--muted); font-size:13px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; padding-top:14px;
+      border-top:1px solid rgba(16,40,31,.08); color:var(--ink-soft); font-size:13px;
     }}
-    .landing-pick-meta a {{ text-decoration:none; color:var(--accent); font-weight:800; }}
+    .landing-pick-meta a {{ text-decoration:none; color:var(--forest); font-weight:800; }}
     .landing-article-card {{
-      display:grid; grid-template-columns: 132px 1fr; gap:14px; padding:14px; border-radius:22px; border:1px solid rgba(17,32,24,.08); background:#fffdf8;
+      display:grid; grid-template-columns:148px 1fr; gap:14px; padding:14px; border-radius:24px; border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,251,244,.92));
     }}
-    .landing-article-image {{ width:132px; height:132px; object-fit:cover; border-radius:18px; display:block; background:#234336; }}
-    .landing-article-fallback {{ display:flex; align-items:center; justify-content:center; color:#f6ead2; font-weight:800; letter-spacing:.08em; }}
-    .landing-article-source {{ color:#8d6424; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }}
-    .landing-article-copy h3 {{ margin:8px 0; font-size:18px; line-height:1.35; }}
-    .landing-article-copy p {{ margin:0; color:var(--muted); font-size:14px; line-height:1.55; }}
+    .landing-article-image {{
+      width:148px; height:148px; object-fit:cover; border-radius:20px; display:block; background:var(--forest-deep);
+    }}
+    .landing-article-fallback {{ display:flex; align-items:center; justify-content:center; color:#f7ead3; font-weight:800; letter-spacing:.08em; }}
+    .landing-article-source {{
+      color:#8b6220; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    }}
+    .landing-article-copy h3 {{
+      margin:8px 0; font-family:"Bricolage Grotesque", sans-serif; font-size:20px; line-height:1.18; letter-spacing:-.02em;
+    }}
+    .landing-article-copy p {{ margin:0; color:var(--ink-soft); font-size:14px; line-height:1.55; }}
     .landing-article-bottom {{
-      display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; color:var(--muted); font-size:13px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; color:var(--ink-soft); font-size:13px;
     }}
-    .landing-article-link {{ text-decoration:none; color:var(--accent); font-weight:800; }}
-    .collection-grid {{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; }}
+    .landing-article-link {{ text-decoration:none; color:var(--forest); font-weight:800; }}
+    .collection-grid {{
+      display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px;
+    }}
     .collection-card {{
-      min-height:190px; padding:20px; border-radius:24px; text-decoration:none; color:var(--ink); border:1px solid rgba(17,32,24,.08);
-      background:radial-gradient(circle at top right, rgba(199,154,52,.18), transparent 34%), linear-gradient(180deg, rgba(255,255,255,.88), rgba(250,243,227,.96));
+      min-height:210px; padding:20px; border-radius:26px; text-decoration:none; color:var(--ink); border:1px solid var(--line);
+      background:
+        radial-gradient(circle at top right, rgba(200,154,43,.18), transparent 36%),
+        linear-gradient(180deg, rgba(255,255,255,.92), rgba(250,244,233,.96));
       transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
     }}
-    .collection-card:hover {{ transform:translateY(-3px); border-color:rgba(32,93,72,.20); box-shadow: var(--shadow); }}
-    .collection-card strong {{ display:block; margin-top:12px; font-size:22px; line-height:1.15; }}
-    .collection-card p {{ margin:12px 0 0; color:var(--muted); font-size:14px; line-height:1.6; }}
-    .collection-card span {{ color:#8d6424; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }}
+    .collection-card:hover {{ transform:translateY(-3px); border-color:var(--line-strong); box-shadow: var(--shadow); }}
+    .collection-card span {{
+      color:#8b6220; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    }}
+    .collection-card strong {{
+      display:block; margin-top:14px; font-family:"Bricolage Grotesque", sans-serif; font-size:28px; line-height:1.02; letter-spacing:-.03em;
+    }}
+    .collection-card p {{ margin:12px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.6; }}
     .site-footer {{
-      margin-top:20px; padding:20px 22px; border-radius:24px; border:1px solid rgba(17,32,24,.08); background:rgba(255,250,242,.74); display:grid; grid-template-columns:1.1fr .9fr; gap:18px;
+      margin-top:20px; padding:22px 24px; border-radius:28px; border:1px solid rgba(255,255,255,.48);
+      background:rgba(255,250,242,.70); display:grid; grid-template-columns:1.1fr .9fr; gap:18px;
     }}
-    .site-footer h3 {{ margin:0; font-family:"Bebas Neue", sans-serif; font-size:34px; letter-spacing:.05em; }}
-    .site-footer p, .site-footer a {{ color:var(--muted); font-size:14px; line-height:1.65; text-decoration:none; }}
-    .site-footer-links {{ display:grid; gap:8px; justify-items:start; justify-content:start; }}
+    .site-footer h3 {{
+      margin:0; font-family:"Bricolage Grotesque", sans-serif; font-size:34px; line-height:1; letter-spacing:-.03em;
+    }}
+    .site-footer p, .site-footer a {{
+      color:var(--ink-soft); font-size:14px; line-height:1.65; text-decoration:none;
+    }}
+    .site-footer-links {{ display:grid; gap:8px; justify-items:start; }}
     .landing-empty {{
-      padding:18px; border-radius:18px; border:1px dashed rgba(17,32,24,.16); color:var(--muted); background:rgba(255,255,255,.46); font-size:14px; line-height:1.6;
+      padding:18px; border-radius:18px; border:1px dashed rgba(16,40,31,.16);
+      color:var(--ink-soft); background:rgba(255,255,255,.46); font-size:14px; line-height:1.6;
     }}
-    @media (max-width: 1100px) {{
+    @keyframes driftGlow {{
+      0%, 100% {{ transform: translate3d(0, 0, 0) scale(1); opacity:.72; }}
+      50% {{ transform: translate3d(-20px, -16px, 0) scale(1.05); opacity:1; }}
+    }}
+    @media (max-width: 1140px) {{
       .hero-stage, .preview-grid {{ grid-template-columns: 1fr; }}
+      .hero-facts {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
       .collection-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
     }}
     @media (max-width: 760px) {{
-      .site-shell {{ padding:16px 14px 34px; }}
+      .site-shell {{ padding:16px 14px 32px; }}
       .site-topbar {{ align-items:flex-start; flex-direction:column; }}
       .site-nav {{ width:100%; justify-content:flex-start; }}
       .hero-stage {{ padding:20px; }}
-      .hero-facts {{ grid-template-columns:1fr; }}
-      .offer-grid, .collection-grid {{ grid-template-columns:1fr; }}
-      .site-poster-card, .landing-article-card, .site-footer {{ grid-template-columns:1fr; }}
-      .site-poster-image, .site-poster-fallback, .landing-article-image {{ width:100%; height:220px; }}
+      .hero-copy h1 {{ font-size: clamp(3rem, 15vw, 4.8rem); }}
+      .hero-facts, .offer-grid, .collection-grid {{ grid-template-columns:1fr; }}
+      .poster-card, .editorial-card, .landing-article-card, .site-footer {{ grid-template-columns:1fr; }}
+      .poster-visual, .editorial-thumb, .landing-article-image {{ width:100%; height:220px; }}
       .section-head {{ flex-direction:column; align-items:flex-start; }}
-      .section-head h2 {{ font-size:38px; }}
-      .hero-copy h1 {{ font-size:72px; }}
+      .section-head h2 {{ font-size:42px; }}
     }}
   </style>
 </head>
@@ -1227,101 +1354,103 @@ def landing_html(
         <span class="site-brand-mark">GF</span>
         <span class="site-brand-copy">
           <strong>GABFOOT</strong>
-          <span>Site officiel pronostics foot et dashboard live</span>
+          <span>Studio premium pour lire les matchs, pas juste empiler des pronostics.</span>
         </span>
       </a>
       <nav class="site-nav">
-        <a href="#offre">Offre</a>
-        <a href="#preview">Apercu</a>
-        <a href="#collections">Collections</a>
+        <a href="#signature">Signature</a>
+        <a href="#live-preview">Top picks</a>
+        <a href="#entry-points">Parcours</a>
         <a class="site-nav-cta" href="/dashboard?limit={limit}&min_percent={min_percent}">Ouvrir le dashboard</a>
       </nav>
     </div>
 
     <section class="hero-stage">
       <div class="hero-copy">
-        <span class="hero-kicker">Football signal studio</span>
-        <h1>Le site GABFOOT pour suivre les meilleurs matchs, la Botola et le poster Telegram depuis une seule base.</h1>
-        <p>La vitrine publique pose le cadre. Le dashboard derriere centralise les picks par heure, les fiches matchs, les favoris, les news clubs et la generation du poster pret pour Telegram. Derniere mise a jour: {updated_at}.</p>
+        <span class="eyebrow">Football signal studio</span>
+        <h1>Des pronostics foot plus propres, plus premium et plus lisibles.</h1>
+        <p>GABFOOT prend l&apos;esprit d&apos;un gros site de pronostics et le rend plus editorial, plus clair et plus credible. Les matchs forts, la Botola, les news clubs et le poster Telegram vivent dans une meme direction visuelle, avec une palette pensee pour inspirer confiance.</p>
         <div class="hero-actions">
           <a class="site-btn" href="/dashboard?limit={limit}&min_percent={min_percent}">Entrer dans le dashboard</a>
-          <a class="ghost-site-btn" href="/articles">Voir les news foot</a>
+          <a class="ghost-site-btn" href="/articles">Voir les news</a>
           <a class="ghost-site-btn" href="/botola">Explorer la Botola</a>
-        </div>
-        <div class="hero-rail">
-          <span>Render-ready</span>
-          <span>Domaine custom ready</span>
-          <span>SEO essentials actifs</span>
         </div>
         <div class="hero-facts">
           <div class="hero-fact">
             <strong>{len(matches)}</strong>
-            <span>top picks deja selectionnes avec le filtre actif a {min_percent}%.</span>
+            <span>signals majeurs actifs avec ton filtre a {min_percent}%.</span>
           </div>
           <div class="hero-fact">
             <strong>{avg_confidence}%</strong>
-            <span>niveau moyen de confiance calcule sur les matchs retenus.</span>
+            <span>fiabilite moyenne lue en une seconde.</span>
           </div>
           <div class="hero-fact">
             <strong>{len(botola) + len(tennis)}</strong>
-            <span>boards secondaires actifs entre Botola Pro et Tennis World.</span>
+            <span>boards additionnels entre Maroc et tennis.</span>
           </div>
+          <div class="hero-fact">
+            <strong>{len(articles)}</strong>
+            <span>angles editoriaux pour habiller le produit.</span>
+          </div>
+        </div>
+        <div class="market-strip">
+          {market_strip}
         </div>
         {notice_html}
       </div>
 
-      <div class="hero-aside">
+      <div class="hero-side">
         {featured_match_html}
-        <div class="site-poster-card">
+        <article class="hero-card poster-card">
           {poster_visual}
-          <div class="site-poster-copy">
-            <div class="section-topline">Poster Telegram</div>
-            <h3>Une affiche exploitable en un clic pour les canaux et les envois instantanes.</h3>
-            <p>Le site genere et expose l'image des picks les plus solides. Le meme moteur alimente aussi l'envoi direct sur Telegram depuis l'interface operationnelle.</p>
+          <div class="poster-copy">
+            <div class="mini-label">Telegram studio</div>
+            <h3>Une affiche prete a diffuser sans sortir de l&apos;univers GABFOOT.</h3>
+            <p>Le site ne se limite pas a l&apos;inspiration visuelle. Il pousse aussi une image exploitable pour les canaux Telegram, avec la meme logique de selection que le dashboard.</p>
             <div class="hero-actions" style="margin-top:14px;">
-              <a class="ghost-site-btn" href="/image" target="_blank">Ouvrir le poster</a>
-              <a class="ghost-site-btn" href="/dashboard?limit={limit}&min_percent={min_percent}#top-picks">Voir les picks</a>
+              <a class="outline-btn" href="/image" target="_blank">Voir le poster</a>
+              <a class="outline-btn" href="/dashboard?limit={limit}&min_percent={min_percent}#top-picks">Voir les picks</a>
             </div>
           </div>
-        </div>
+        </article>
         {featured_article_html}
       </div>
     </section>
 
-    <section id="offre" class="section-block">
+    <section id="signature" class="section-block">
       <div class="section-head">
         <div>
-          <div class="section-topline">Ce que propose le site</div>
-          <h2>Une vitrine claire avant d'entrer dans l'outil.</h2>
+          <div class="mini-label">Direction du produit</div>
+          <h2>Une signature plus forte que le simple tableau de pronostics.</h2>
         </div>
-        <p>Le site public explique la proposition de valeur, tandis que le dashboard conserve toute la profondeur: picks, favoris, fiches match, news et automatisation Telegram.</p>
+        <p>Le projet garde la richesse d&apos;un site de pronostics populaire, mais remonte en gamme avec une meilleure hierarchie, une couleur plus maitrisee et une lecture plus rapide des signaux utiles.</p>
       </div>
       <div class="offer-grid">
         <article class="offer-card">
           <div class="offer-index">01</div>
-          <strong>Lecture premium des matchs</strong>
-          <p>Les signaux sont ranges par heure avec un score de confiance, une lecture rapide de la forme, du classement et du contexte.</p>
+          <strong>Un ton plus credible</strong>
+          <p>Fond sable chaud, vert profond et accent or. Le rendu evoque l&apos;analyse et la confiance, pas le casino agressif ni la page surchargee.</p>
         </article>
         <article class="offer-card">
           <div class="offer-index">02</div>
-          <strong>Focus local et international</strong>
-          <p>Botola Pro pour l'ancrage marocain, Tennis World pour elargir l'offre, et actualites clubs & joueurs pour nourrir la page.</p>
+          <strong>Une lecture plus rapide</strong>
+          <p>Les picks importants remontent tout de suite. En quelques secondes, tu vois les matchs forts, le niveau de fiabilite et les boards annexes qui comptent.</p>
         </article>
         <article class="offer-card">
           <div class="offer-index">03</div>
-          <strong>Poster et diffusion Telegram</strong>
-          <p>Le site n'est pas qu'une facade: il relie aussi l'image des picks et l'automatisation Telegram a l'interface interne.</p>
+          <strong>Un produit plus complet</strong>
+          <p>Dashboard, fiches match, favoris personnels, flux editorial et poster Telegram travaillent ensemble au lieu de donner l&apos;impression de blocs isoles.</p>
         </article>
       </div>
     </section>
 
-    <section id="preview" class="section-block">
+    <section id="live-preview" class="section-block">
       <div class="section-head">
         <div>
-          <div class="section-topline">Apercu direct</div>
-          <h2>Le meilleur du flux actuel.</h2>
+          <div class="mini-label">Lecture instantanee</div>
+          <h2>Le niveau du flux actuel, sans ouvrir dix pages.</h2>
         </div>
-        <p>Quelques cartes suffisent pour montrer le niveau du produit avant d'ouvrir le dashboard complet.</p>
+        <p>La home montre deja le ton du produit. Les meilleures cartes doivent suffire a convaincre que GABFOOT sait trier, cadrer et raconter les matchs qui meritent l&apos;attention.</p>
       </div>
       <div class="preview-grid">
         <div class="landing-stack">
@@ -1333,34 +1462,34 @@ def landing_html(
       </div>
     </section>
 
-    <section id="collections" class="section-block">
+    <section id="entry-points" class="section-block">
       <div class="section-head">
         <div>
-          <div class="section-topline">Entrer par besoin</div>
-          <h2>Quatre portes d'entree vers ton produit.</h2>
+          <div class="mini-label">Parcours rapides</div>
+          <h2>Quatre portes d&apos;entree claires dans le produit.</h2>
         </div>
-        <p>Chaque bloc pointe vers une experience concrete deja disponible dans l'application.</p>
+        <p>Chaque bloc ouvre une partie utile du site sans perdre l&apos;utilisateur dans une navigation trop dense.</p>
       </div>
       <div class="collection-grid">
         <a class="collection-card" href="/dashboard?limit={limit}&min_percent={min_percent}">
-          <span>Dashboard</span>
-          <strong>Picks premium et favoris personnels</strong>
-          <p>Vue complete des meilleurs matchs, favoris embarques sur l'appareil et acces direct aux fiches d'analyse.</p>
+          <span>Control room</span>
+          <strong>Dashboard premium</strong>
+          <p>La vue operationnelle pour les picks classes, les favoris embarques, les liens match et l&apos;affiche Telegram.</p>
         </a>
         <a class="collection-card" href="/botola">
           <span>Maroc</span>
-          <strong>Pronostic Botola Pro</strong>
-          <p>Section dediee a la premiere ligue marocaine avec lecture rapide de la forme, du rang et du prochain statut.</p>
+          <strong>Botola Pro</strong>
+          <p>Une porte locale lisible, pensee pour donner au projet une vraie couleur marocaine et une entree editorialement forte.</p>
         </a>
         <a class="collection-card" href="/tennis">
-          <span>Live board</span>
-          <strong>Tennis World ATP / WTA</strong>
-          <p>Une porte secondaire utile pour enrichir le site et montrer que GABFOOT sait aussi traiter un board multisports.</p>
+          <span>Multi-board</span>
+          <strong>Tennis World</strong>
+          <p>Un second board pour montrer que GABFOOT peut aussi traiter d&apos;autres flux sans casser son identite visuelle.</p>
         </a>
         <a class="collection-card" href="/articles">
           <span>Editorial</span>
-          <strong>News clubs et joueurs</strong>
-          <p>Un flux visuel de news pour rendre la home plus vivante et donner du relief autour des matchs retenus.</p>
+          <strong>Clubs & joueurs</strong>
+          <p>Le contenu qui donne du relief a la page, nourrit le partage et rapproche la plateforme d&apos;un vrai media produit.</p>
         </a>
       </div>
     </section>
@@ -1368,7 +1497,7 @@ def landing_html(
     <footer class="site-footer">
       <div>
         <h3>GABFOOT</h3>
-        <p>Cette racine sert desormais de vitrine officielle. Le dashboard reste disponible sur <a href="/dashboard">/dashboard</a> pour l'usage operationnel, les envois Telegram et la navigation detaillee.</p>
+        <p>La page d&apos;accueil pose maintenant une vraie identite: moins chargee, plus premium, plus nette. Le coeur operationnel reste accessible sur <a href="/dashboard">/dashboard</a> pour piloter les picks, Telegram et les boards annexes.</p>
       </div>
       <div class="site-footer-links">
         <a href="/dashboard?limit={limit}&min_percent={min_percent}">Ouvrir le dashboard</a>
@@ -1902,9 +2031,13 @@ def page_html(
         image_block = """
         <section class="panel image-panel reveal">
           <div class="panel-head">
-            <h2>Affiche actuelle</h2>
-            <a class="ghost-btn" href="/image" target="_blank">Ouvrir l'image</a>
+            <div class="panel-title">
+              <span class="panel-pill">Poster</span>
+              <h2>Affiche Telegram</h2>
+            </div>
+            <a class="ghost-btn light-ghost-btn" href="/image" target="_blank">Ouvrir l'image</a>
           </div>
+          <p class="section-note">Une sortie visuelle prete a diffuser, construite avec le meme filtre que le board principal.</p>
           <img class="poster" src="/image" alt="Affiche matchs surs">
         </section>
         """
@@ -1920,28 +2053,29 @@ def page_html(
             f"/match/{featured_match.match_id}",
         )
         lead_panel = f"""
-        <section class="spotlight-card reveal">
-          <div class="spotlight-label">Focus premium</div>
+        <section class="studio-card reveal">
+          <div class="spotlight-label">Match signature</div>
           <h2>{html.escape(featured_match.home_name)} <span>vs</span> {html.escape(featured_match.away_name)}</h2>
           <div class="spotlight-meta">{html.escape(featured_match.tournament_name)} • {html.escape(fmt_kickoff(featured_match.kickoff_utc))}</div>
           <div class="spotlight-badges">
             <span>{html.escape(featured_match.prediction)} • {featured_match.sureness_percent}%</span>
             <span>{html.escape(featured_match.home_form)} | {html.escape(featured_match.away_form)}</span>
+            <span>H2H {html.escape(str(featured_match.h2h_edge))}</span>
           </div>
           <p>{html.escape(' • '.join(featured_match.why))}</p>
-          <div style="margin-top:18px; display:flex; gap:10px; flex-wrap:wrap;"><a class="btn" href="/match/{featured_match.match_id}">Voir la fiche match</a>{featured_favorite}</div>
+          <div class="studio-actions"><a class="btn" href="/match/{featured_match.match_id}">Voir la fiche match</a>{featured_favorite}</div>
         </section>
         """
     editorial_panel = ""
     if featured_article:
         image = str(featured_article.get("image", "")).strip()
         visual = f'<img class="editorial-image" src="{html.escape(image)}" alt="{html.escape(featured_article["team"])}">' if image else '<div class="editorial-image editorial-fallback">NEWS</div>'
-        article_link = f'<a class="btn" href="{html.escape(featured_article["url"])}" target="_blank" rel="noreferrer">Lire l&apos;analyse</a>' if featured_article.get("url") else ""
+        article_link = f'<a class="btn light-btn" href="{html.escape(featured_article["url"])}" target="_blank" rel="noreferrer">Lire l&apos;analyse</a>' if featured_article.get("url") else ""
         editorial_panel = f"""
         <section class="editorial-card reveal">
           <div class="editorial-visual">{visual}</div>
           <div class="editorial-copy">
-            <div class="spotlight-label">Article vedette</div>
+            <div class="spotlight-label">Radar editorial</div>
             <h3>{html.escape(featured_article["title"])}</h3>
             <div class="kickoff">{html.escape(featured_article["team"])} • {html.escape(featured_article["source"])}</div>
             <p>{html.escape(featured_article["summary"])}</p>
@@ -1953,14 +2087,15 @@ def page_html(
     <section id="favorites-zone" class="panel reveal section-anchor" style="grid-column: 1 / -1;">
       <div class="panel-head">
         <div class="panel-title">
-          <span class="panel-pill">Mon espace</span>
+          <span class="panel-pill">Mon board</span>
           <h2>Mes favoris</h2>
         </div>
-        <span class="footer">Matchs enregistres sur cet appareil</span>
+        <span class="footer">Stockes localement sur cet appareil</span>
       </div>
+      <p class="section-note">Les matchs enregistres ici servent de shortlist personnelle. Tu peux construire ton propre board sans casser le flux principal.</p>
       <div class="favorites-board">
         <div id="favorites-list" class="favorites-grid"></div>
-        <div id="favorites-empty" class="favorites-empty">Ajoute des matchs depuis les tableaux ou les fiches pour construire ton board personnel.</div>
+        <div id="favorites-empty" class="favorites-empty">Ajoute des matchs depuis les tableaux ou les fiches pour garder tes meilleurs spots dans un espace a part.</div>
       </div>
     </section>
     """
@@ -1969,268 +2104,512 @@ def page_html(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GABFOOT | Pronostics Foot Premium</title>
-  <meta name="description" content="GABFOOT centralise les meilleurs pronostics, les matchs classes par heure, la Botola Pro, le tennis et les articles foot dans un seul dashboard premium.">
-  <meta property="og:title" content="GABFOOT | Pronostics Foot Premium">
-  <meta property="og:description" content="Pronostics classes par heure, analyses premium, articles foot et dashboard GABFOOT.">
+  <title>GABFOOT | Control Room Pronostics Foot</title>
+  <meta name="description" content="Le dashboard GABFOOT classe les picks les plus solides, les signaux Botola, le tennis et les articles football dans une interface plus premium et plus lisible.">
+  <meta property="og:title" content="GABFOOT | Control Room Pronostics Foot">
+  <meta property="og:description" content="Dashboard GABFOOT avec picks premium, flux editorial, Botola et poster Telegram dans un univers plus haut de gamme.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="{html.escape(icon_url)}">
   {og_url_tag}
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="GABFOOT | Pronostics Foot Premium">
-  <meta name="twitter:description" content="Dashboard GABFOOT avec picks premium, Botola, Tennis World et poster Telegram.">
+  <meta name="twitter:title" content="GABFOOT | Control Room Pronostics Foot">
+  <meta name="twitter:description" content="Une salle de controle GABFOOT plus premium, plus claire et plus credible pour les pronostics foot.">
   <meta name="twitter:image" content="{html.escape(icon_url)}">
-  <meta name="theme-color" content="#08150c">
+  <meta name="theme-color" content="#14382c">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   {canonical_tag}
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" href="/icon.png">
   <link rel="apple-touch-icon" href="/icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;700;800&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {{
-      --bg: #06110d;
-      --panel: rgba(8, 18, 18, 0.84);
-      --panel-2: rgba(12, 28, 24, 0.95);
-      --line: rgba(103, 255, 182, 0.12);
-      --line-strong: rgba(103, 255, 182, 0.32);
-      --text: #f4fff8;
-      --muted: #97b2aa;
-      --accent: #67ffb6;
-      --accent-2: #ffe066;
-      --accent-3: #7db7ff;
-      --danger: #ffd18f;
-      --shadow: 0 22px 60px rgba(0,0,0,.32);
+      --sand: #f4efe2;
+      --sand-2: #e8dcc4;
+      --surface: rgba(255, 252, 244, 0.94);
+      --surface-strong: rgba(250, 244, 231, 0.98);
+      --forest: #14382c;
+      --forest-deep: #0d221a;
+      --forest-soft: #315447;
+      --ink: #13211c;
+      --muted: #66756c;
+      --line: rgba(19, 33, 28, 0.10);
+      --line-strong: rgba(20, 56, 44, 0.20);
+      --gold: #bf8f2f;
+      --gold-soft: #e1bc67;
+      --gold-pale: rgba(191, 143, 47, 0.12);
+      --blue-soft: #7eabc8;
+      --danger: #b85a39;
+      --shadow: 0 24px 60px rgba(19, 33, 28, 0.12);
+      --shadow-soft: 0 18px 42px rgba(19, 33, 28, 0.08);
     }}
     * {{ box-sizing: border-box; }}
+    html {{ scroll-behavior: smooth; }}
     body {{
       margin: 0;
-      font-family: "Space Grotesk", "DejaVu Sans", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(103,255,182,0.17), transparent 24%),
-        radial-gradient(circle at 85% 10%, rgba(255,224,102,0.11), transparent 18%),
-        radial-gradient(circle at bottom right, rgba(125,183,255,0.12), transparent 22%),
-        linear-gradient(180deg, #04100d 0%, #071916 44%, #06110d 100%);
       min-height: 100vh;
+      font-family: "Source Sans 3", "DejaVu Sans", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(191,143,47,.14), transparent 20%),
+        radial-gradient(circle at 92% 8%, rgba(20,56,44,.16), transparent 22%),
+        linear-gradient(180deg, #f8f2e8 0%, #f2eadc 52%, #ece1cf 100%);
     }}
-    .wrap {{ max-width: 1280px; margin: 0 auto; padding: 24px 18px 52px; }}
-    html {{ scroll-behavior: smooth; }}
+    a {{ color: inherit; }}
+    .wrap {{ max-width: 1280px; margin: 0 auto; padding: 24px 18px 56px; }}
     .hero {{
       position: relative;
       overflow: hidden;
-      padding: 24px;
-      border: 1px solid var(--line-strong);
-      border-radius: 30px;
+      padding: 28px;
+      border-radius: 34px;
       background:
-        linear-gradient(135deg, rgba(16, 38, 24, 0.94), rgba(9, 18, 14, 0.88)),
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
-    }}
-    .hero::after {{
-      content: "";
-      position: absolute;
-      inset: auto -10% -120px auto;
-      width: 260px;
-      height: 260px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(103,255,182,.18), transparent 62%);
-      animation: pulseOrbit 5s ease-in-out infinite;
-      pointer-events: none;
+        radial-gradient(circle at top right, rgba(225,188,103,.22), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(255,255,255,.08), transparent 26%),
+        linear-gradient(135deg, rgba(13,34,26,.97), rgba(27,66,51,.94));
+      color: #f8f3e8;
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 32px 70px rgba(13, 34, 26, 0.22);
     }}
     .hero::before {{
       content: "";
       position: absolute;
       inset: 0;
-      background:
-        radial-gradient(circle at 20% 0%, rgba(103,255,182,.16), transparent 28%),
-        radial-gradient(circle at 100% 10%, rgba(125,183,255,.10), transparent 22%);
       pointer-events: none;
+      background:
+        linear-gradient(120deg, rgba(255,255,255,.04), transparent 36%),
+        radial-gradient(circle at 12% 18%, rgba(225,188,103,.18), transparent 22%);
+    }}
+    .hero-top,
+    .hero-overview,
+    .hero-strip {{
+      position: relative;
+      z-index: 1;
+    }}
+    .hero-top {{
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: start;
+    }}
+    .hero-kicker {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: rgba(225,188,103,.14);
+      border: 1px solid rgba(225,188,103,.22);
+      color: #f4d489;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }}
+    .hero-badge {{
+      display: grid;
+      gap: 2px;
+      min-width: 170px;
+      padding: 16px 18px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }}
+    .hero-badge strong {{
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: -.04em;
+    }}
+    .hero-badge span {{
+      color: rgba(248,243,232,.78);
+      font-size: 13px;
+      line-height: 1.45;
+    }}
+    h1 {{
+      margin: 14px 0 0;
+      max-width: 760px;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 58px;
+      line-height: .94;
+      letter-spacing: -.05em;
+    }}
+    .sub {{
+      margin-top: 14px;
+      max-width: 760px;
+      color: rgba(248,243,232,.82);
+      font-size: 18px;
+      line-height: 1.58;
     }}
     .nav-links {{
-      position: relative;
-      z-index: 1;
-      display:flex; flex-wrap:wrap; gap:10px; margin-top:18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
     }}
     .nav-link {{
-      display:inline-flex; align-items:center; min-height:42px; padding:0 15px;
-      border-radius:999px; color:var(--text); text-decoration:none; border:1px solid var(--line);
-      background: rgba(255,255,255,.04); font-size:14px; font-weight:700;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
-      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      display: inline-flex;
+      align-items: center;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      color: #f8f3e8;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      font-size: 14px;
+      font-weight: 700;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
     }}
-    .nav-link:hover, .nav-link:active {{
+    .nav-link:hover,
+    .nav-link:active {{
       transform: translateY(-1px);
-      border-color: var(--line-strong);
-      background: rgba(124,255,107,.10);
+      background: rgba(225,188,103,.14);
+      border-color: rgba(225,188,103,.26);
+    }}
+    .hero-overview {{
+      display: grid;
+      grid-template-columns: 1.06fr .94fr;
+      gap: 18px;
+      margin-top: 24px;
     }}
     .hero-stats {{
-      position: relative;
-      z-index: 1;
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
-      margin-top: 18px;
     }}
     .hero-stat {{
-      position: relative;
-      overflow: hidden;
-      padding: 14px 16px;
-      border-radius: 20px;
-      border: 1px solid rgba(103,255,182,.14);
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
-    }}
-    .hero-stat::before {{
-      content: "";
-      position: absolute;
-      inset: auto -10px -40px auto;
-      width: 88px;
-      height: 88px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(103,255,182,.16), transparent 66%);
+      padding: 16px 16px 15px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
     }}
     .hero-stat-label {{
-      position: relative;
-      z-index: 1;
-      color: var(--muted);
-      font-size: 12px;
+      color: rgba(248,243,232,.64);
+      font-size: 11px;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: .08em;
-      font-weight: 700;
+      letter-spacing: .10em;
     }}
     .hero-stat-value {{
-      position: relative;
-      z-index: 1;
-      margin-top: 8px;
-      font-size: 28px;
-      font-weight: 800;
+      margin-top: 10px;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 34px;
       line-height: 1;
+      letter-spacing: -.04em;
     }}
     .hero-stat-note {{
-      position: relative;
-      z-index: 1;
-      margin-top: 6px;
-      color: #d8eee6;
-      font-size: 13px;
+      margin-top: 8px;
+      color: rgba(248,243,232,.76);
+      font-size: 14px;
+      line-height: 1.45;
     }}
     .market-strip {{
-      position: relative;
-      z-index: 1;
       display: flex;
       gap: 10px;
       overflow-x: auto;
-      margin-top: 18px;
+      margin-top: 16px;
       padding-bottom: 4px;
       scrollbar-width: none;
     }}
     .market-strip::-webkit-scrollbar {{ display: none; }}
     .market-pill {{
       min-width: 220px;
-      padding: 12px 14px;
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.04);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      padding: 14px 15px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      color: #f8f3e8;
     }}
     .market-pill-label {{
       display: block;
-      color: var(--muted);
+      color: rgba(248,243,232,.68);
       font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .10em;
       text-transform: uppercase;
-      letter-spacing: .08em;
-      font-weight: 700;
     }}
     .market-pill-value {{
       display: block;
       margin-top: 8px;
-      font-size: 18px;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 19px;
+      line-height: 1.1;
+    }}
+    .control-card {{
+      padding: 20px;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.07);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }}
+    .control-label {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 11px;
+      border-radius: 999px;
+      background: rgba(244,239,226,.12);
+      color: #f6e5b8;
+      font-size: 11px;
       font-weight: 800;
+      letter-spacing: .10em;
+      text-transform: uppercase;
     }}
-    h1 {{ margin: 0; font-size: 44px; letter-spacing: .03em; color: var(--accent); position: relative; z-index: 1; }}
-    .sub {{ margin-top: 8px; color: var(--muted); font-size: 16px; position: relative; z-index: 1; max-width: 760px; line-height: 1.5; }}
-    .hero-strip {{ position: relative; z-index: 1; display:grid; gap:16px; margin-top:22px; grid-template-columns: 1.08fr .92fr; }}
-    .spotlight-card, .editorial-card {{
-      position: relative; overflow:hidden; border-radius: 28px; padding: 22px; min-height: 250px;
-      border: 1px solid rgba(124,255,107,.18); box-shadow: var(--shadow);
-      background: linear-gradient(135deg, rgba(8,34,30,.95), rgba(6,14,12,.94));
+    .control-card h2 {{
+      margin: 12px 0 0;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 30px;
+      line-height: 1;
+      letter-spacing: -.04em;
     }}
-    .spotlight-card::before, .editorial-card::before {{
-      content:""; position:absolute; inset:0;
-      background: radial-gradient(circle at top right, rgba(255,224,102,.16), transparent 24%),
-                  radial-gradient(circle at bottom left, rgba(103,255,182,.14), transparent 28%);
-      pointer-events:none;
-    }}
-    .editorial-card {{ display:grid; grid-template-columns: 180px 1fr; gap:18px; align-items:center; }}
-    .spotlight-label {{
-      display:inline-flex; padding:7px 11px; border-radius:999px; font-size:12px; font-weight:800;
-      color:#07120d; background:linear-gradient(90deg, var(--accent), var(--accent-2));
-    }}
-    .spotlight-card h2, .editorial-copy h3 {{ margin:16px 0 8px; font-size:34px; line-height:1.05; }}
-    .spotlight-card h2 span {{ color: var(--muted); font-size:24px; }}
-    .spotlight-meta {{ color: var(--muted); font-size:14px; }}
-    .spotlight-badges {{ display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }}
-    .spotlight-badges span {{
-      padding:10px 12px; border-radius:14px; border:1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.05); color: var(--text); font-size:13px; font-weight:700;
-    }}
-    .spotlight-card p, .editorial-copy p {{ margin:16px 0 0; color: var(--muted); line-height:1.55; font-size:15px; }}
-    .editorial-image {{
-      width: 180px; height: 180px; object-fit: cover; border-radius: 26px; background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-    }}
-    .editorial-fallback, .article-image-fallback, .article-badge-fallback {{
-      display:flex; align-items:center; justify-content:center; color:#d8ff7a; font-weight:900; letter-spacing:.14em;
+    .control-copy {{
+      margin: 10px 0 0;
+      color: rgba(248,243,232,.78);
+      font-size: 15px;
+      line-height: 1.55;
     }}
     .toolbar {{
-      display: flex; flex-wrap: wrap; gap: 12px; align-items: end;
-      margin-top: 20px; position: relative; z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: end;
+      margin-top: 18px;
     }}
     .field {{ display: flex; flex-direction: column; gap: 6px; }}
-    label {{ font-size: 13px; color: var(--muted); }}
+    label {{
+      color: rgba(248,243,232,.72);
+      font-size: 13px;
+      font-weight: 700;
+    }}
     input {{
-      width: 124px; padding: 11px 13px; border-radius: 14px;
-      border: 1px solid var(--line); background: rgba(5,12,8,.72); color: var(--text);
-      font-size: 15px; outline: none;
-      transition: border-color .18s ease, box-shadow .18s ease;
+      width: 126px;
+      min-height: 46px;
+      padding: 11px 13px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      color: #f8f3e8;
+      font-size: 15px;
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
     }}
     input:focus {{
-      border-color: var(--line-strong);
-      box-shadow: 0 0 0 3px rgba(124,255,107,.08);
+      border-color: rgba(225,188,103,.48);
+      box-shadow: 0 0 0 3px rgba(225,188,103,.12);
+      background: rgba(255,255,255,.12);
     }}
-    .btn, .ghost-btn {{
-      appearance: none; border: 0; cursor: pointer; text-decoration: none;
-      display: inline-flex; align-items: center; justify-content: center;
-      min-height: 46px; padding: 0 18px; border-radius: 14px; font-weight: 800;
+    .btn,
+    .ghost-btn {{
+      appearance: none;
+      border: 0;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 14px;
+      font-weight: 800;
       transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
     }}
     .btn {{
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      color: #10230d;
-      box-shadow: 0 12px 30px rgba(124,255,107,.18);
+      background: linear-gradient(90deg, #e8c56f, #f0d894);
+      color: #11211b;
+      box-shadow: 0 14px 28px rgba(191,143,47,.18);
     }}
-    .ghost-btn {{ border: 1px solid var(--line); color: var(--text); background: rgba(255,255,255,.05); }}
-    .btn:hover, .ghost-btn:hover, .btn:active, .ghost-btn:active {{
-      transform: translateY(-1px) scale(1.01);
-      box-shadow: 0 14px 34px rgba(0,0,0,.26);
+    .ghost-btn {{
+      border: 1px solid rgba(255,255,255,.16);
+      color: #f8f3e8;
+      background: rgba(255,255,255,.05);
+    }}
+    .light-btn {{
+      background: linear-gradient(90deg, #c59a3a, #e0bb62);
+      color: #11211b;
+    }}
+    .light-ghost-btn {{
+      border-color: var(--line);
+      color: var(--ink);
+      background: rgba(255,255,255,.56);
+    }}
+    .btn:hover,
+    .ghost-btn:hover,
+    .btn:active,
+    .ghost-btn:active {{
+      transform: translateY(-1px);
+      box-shadow: 0 16px 30px rgba(19,33,28,.16);
+    }}
+    .hero-footer {{
+      margin-top: 14px;
+      color: rgba(248,243,232,.68);
+      font-size: 14px;
+      line-height: 1.5;
     }}
     .notice {{
-      margin-top: 16px; padding: 12px 14px; border-radius: 12px;
-      background: rgba(255, 207, 128, 0.1); color: var(--danger); border: 1px solid rgba(255, 207, 128, 0.18);
+      margin-top: 16px;
+      padding: 13px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(225,188,103,.20);
+      background: rgba(225,188,103,.12);
+      color: #f8e2b0;
+      font-size: 14px;
     }}
-    .grid {{ display: grid; gap: 18px; margin-top: 22px; grid-template-columns: 1.12fr .88fr; }}
+    .hero-strip {{
+      display: grid;
+      gap: 16px;
+      margin-top: 22px;
+      grid-template-columns: 1.08fr .92fr;
+    }}
+    .studio-card,
+    .editorial-card {{
+      position: relative;
+      overflow: hidden;
+      min-height: 260px;
+      padding: 22px;
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    }}
+    .studio-card::before,
+    .editorial-card::before {{
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at top right, rgba(225,188,103,.16), transparent 26%),
+        radial-gradient(circle at bottom left, rgba(255,255,255,.08), transparent 24%);
+    }}
+    .editorial-card {{
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 18px;
+      align-items: center;
+    }}
+    .spotlight-label {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(225,188,103,.18);
+      color: #f4d489;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+    }}
+    .studio-card h2,
+    .editorial-copy h3 {{
+      position: relative;
+      z-index: 1;
+      margin: 16px 0 8px;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 34px;
+      line-height: 1.02;
+      letter-spacing: -.04em;
+    }}
+    .studio-card h2 span {{ color: rgba(248,243,232,.64); font-size: 24px; }}
+    .spotlight-meta,
+    .kickoff {{
+      position: relative;
+      z-index: 1;
+      color: rgba(248,243,232,.72);
+      font-size: 14px;
+      line-height: 1.5;
+    }}
+    .spotlight-badges {{
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }}
+    .spotlight-badges span {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      color: #f8f3e8;
+      font-size: 13px;
+      font-weight: 700;
+    }}
+    .studio-card p,
+    .editorial-copy p {{
+      position: relative;
+      z-index: 1;
+      margin: 16px 0 0;
+      color: rgba(248,243,232,.78);
+      font-size: 15px;
+      line-height: 1.58;
+    }}
+    .studio-actions {{
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }}
+    .editorial-image {{
+      width: 190px;
+      height: 190px;
+      object-fit: cover;
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.10);
+      box-shadow: var(--shadow-soft);
+    }}
+    .editorial-fallback,
+    .article-image-fallback,
+    .article-badge-fallback {{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #d7bb76;
+      font-weight: 900;
+      letter-spacing: .14em;
+    }}
+    .grid {{
+      display: grid;
+      gap: 18px;
+      margin-top: 22px;
+      grid-template-columns: 1.12fr .88fr;
+    }}
+    .section-grid {{
+      display: grid;
+      gap: 18px;
+      margin-top: 18px;
+      grid-template-columns: 1fr 1fr;
+    }}
     .panel {{
-      border: 1px solid var(--line); border-radius: 24px; background: var(--panel); padding: 18px;
-      box-shadow: var(--shadow); backdrop-filter: blur(16px);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at top right, rgba(191,143,47,.08), transparent 22%),
+        linear-gradient(180deg, var(--surface) 0%, var(--surface-strong) 100%);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      color: var(--ink);
     }}
-    .section-anchor {{
-      scroll-margin-top: 24px;
+    .section-anchor {{ scroll-margin-top: 24px; }}
+    .panel-head {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
     }}
-    .panel-head {{ display:flex; align-items:center; justify-content:space-between; gap: 12px; margin-bottom: 14px; }}
     .panel-title {{
       display: flex;
       align-items: center;
@@ -2239,88 +2618,112 @@ def page_html(
     .panel-pill {{
       display: inline-flex;
       align-items: center;
-      min-height: 28px;
+      min-height: 30px;
       padding: 0 12px;
       border-radius: 999px;
+      border: 1px solid rgba(191,143,47,.18);
+      background: rgba(191,143,47,.10);
+      color: var(--gold);
       font-size: 11px;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: .08em;
-      background: rgba(103,255,182,.12);
-      border: 1px solid rgba(103,255,182,.14);
-      color: var(--accent);
+      letter-spacing: .10em;
     }}
-    .panel h2 {{ margin: 0; font-size: 22px; letter-spacing: .02em; }}
-    .league {{ color: var(--accent); font-size: 14px; font-weight: 700; }}
-    .kickoff {{ color: var(--muted); font-size: 13px; margin-top: 4px; }}
+    .panel h2 {{
+      margin: 0;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 30px;
+      line-height: 1;
+      letter-spacing: -.04em;
+      color: var(--forest);
+    }}
+    .section-note,
+    .footer {{
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }}
+    .league {{
+      color: var(--gold);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }}
     .table-shell {{
       overflow: hidden;
-      border-radius: 20px;
-      border: 1px solid rgba(103,255,182,.14);
-      background: linear-gradient(180deg, rgba(12,29,24,.96), rgba(8,17,16,.98));
+      border-radius: 22px;
+      border: 1px solid rgba(19,33,28,.08);
+      background: rgba(255,255,255,.60);
     }}
     .prediction-table {{
       width: 100%;
-      border-collapse: collapse;
       min-width: 980px;
+      border-collapse: collapse;
     }}
     .prediction-table thead th {{
       padding: 16px 18px;
       text-align: left;
       font-size: 12px;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: .08em;
+      letter-spacing: .10em;
       color: var(--muted);
-      background: rgba(255,255,255,.03);
-      border-bottom: 1px solid rgba(103,255,182,.12);
+      background: rgba(20,56,44,.04);
+      border-bottom: 1px solid rgba(19,33,28,.08);
     }}
     .hour-separator td {{
       padding: 12px 18px;
       font-size: 12px;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: .08em;
-      color: var(--accent-2);
-      background: linear-gradient(90deg, rgba(103,255,182,.12), rgba(255,224,102,.08));
-      border-bottom: 1px solid rgba(103,255,182,.12);
+      letter-spacing: .10em;
+      color: var(--forest);
+      background: linear-gradient(90deg, rgba(191,143,47,.12), rgba(20,56,44,.05));
+      border-bottom: 1px solid rgba(19,33,28,.08);
     }}
     .prediction-row {{
-      transition: transform .22s ease, background .22s ease;
+      transition: transform .20s ease, background .20s ease;
     }}
     .prediction-row.pick-home td:first-child,
     .market-pill.pick-home,
-    .table-pick.pick-home {{ box-shadow: inset 4px 0 0 rgba(103,255,182,.65); }}
+    .table-pick.pick-home {{ box-shadow: inset 4px 0 0 rgba(38, 139, 92, .60); }}
     .prediction-row.pick-away td:first-child,
     .market-pill.pick-away,
-    .table-pick.pick-away {{ box-shadow: inset 4px 0 0 rgba(125,183,255,.65); }}
+    .table-pick.pick-away {{ box-shadow: inset 4px 0 0 rgba(97, 142, 174, .60); }}
     .prediction-row.pick-draw td:first-child,
     .market-pill.pick-draw,
-    .table-pick.pick-draw {{ box-shadow: inset 4px 0 0 rgba(255,224,102,.65); }}
+    .table-pick.pick-draw {{ box-shadow: inset 4px 0 0 rgba(191, 143, 47, .60); }}
     .prediction-row.pick-mixed td:first-child,
     .market-pill.pick-mixed,
-    .table-pick.pick-mixed {{ box-shadow: inset 4px 0 0 rgba(255,140,128,.55); }}
+    .table-pick.pick-mixed {{ box-shadow: inset 4px 0 0 rgba(184, 90, 57, .46); }}
     .prediction-row:hover {{
-      transform: translateY(-1px) scale(1.003);
-      background: rgba(255,255,255,.02);
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.32);
     }}
     .prediction-table td {{
       padding: 18px;
       vertical-align: top;
-      border-bottom: 1px solid rgba(255,255,255,.05);
+      border-bottom: 1px solid rgba(19,33,28,.06);
     }}
     .prediction-table tbody tr:last-child td {{ border-bottom: 0; }}
-    .row-league {{ color: var(--accent); font-size: 13px; font-weight: 700; }}
-    .row-kickoff, .row-meta {{
+    .row-league {{
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 800;
+    }}
+    .row-kickoff,
+    .row-meta {{
       color: var(--muted);
       font-size: 13px;
-      margin-top: 6px;
       line-height: 1.45;
+      margin-top: 6px;
     }}
     .row-kickoff-time {{
-      font-size: 24px;
-      font-weight: 800;
-      color: var(--accent);
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 25px;
       line-height: 1;
+      letter-spacing: -.03em;
+      color: var(--forest);
     }}
     .row-kickoff-date {{
       margin-top: 6px;
@@ -2329,23 +2732,29 @@ def page_html(
       line-height: 1.4;
     }}
     .row-match {{
-      font-size: 19px;
-      font-weight: 700;
-      line-height: 1.3;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 22px;
+      line-height: 1.12;
+      letter-spacing: -.03em;
+      color: var(--ink);
     }}
-    .row-match span {{ color: var(--muted); font-size: 14px; font-weight: 500; }}
+    .row-match span {{
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }}
     .row-why {{
       margin-top: 8px;
-      color: #cfe5dd;
-      font-size: 13px;
-      line-height: 1.45;
+      color: #506259;
+      font-size: 14px;
+      line-height: 1.48;
     }}
-    .row-actions {{ margin-top: 12px; }}
     .row-actions {{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
     }}
     .row-link {{
       display: inline-flex;
@@ -2353,41 +2762,41 @@ def page_html(
       min-height: 34px;
       padding: 0 12px;
       border-radius: 999px;
+      border: 1px solid rgba(19,33,28,.10);
+      background: rgba(255,255,255,.72);
+      color: var(--ink);
       text-decoration: none;
       font-size: 12px;
       font-weight: 800;
-      color: var(--text);
-      border: 1px solid rgba(103,255,182,.16);
-      background: rgba(255,255,255,.04);
     }}
-    .row-link:hover {{ background: rgba(103,255,182,.10); }}
+    .row-link:hover {{ background: rgba(255,255,255,.92); }}
     .favorite-toggle {{
-      appearance:none;
-      border:1px solid rgba(255,224,102,.18);
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-width:38px;
-      min-height:38px;
-      padding:0 12px;
-      border-radius:999px;
-      background:rgba(255,255,255,.04);
-      color:#fff0a8;
-      font-size:18px;
-      font-weight:900;
-      line-height:1;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      appearance: none;
+      border: 1px solid rgba(191,143,47,.22);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 38px;
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(191,143,47,.08);
+      color: var(--gold);
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1;
       transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
     }}
-    .favorite-toggle:hover, .favorite-toggle.active {{
+    .favorite-toggle:hover,
+    .favorite-toggle.active {{
       transform: translateY(-1px);
-      border-color: rgba(255,224,102,.42);
-      background: rgba(255,224,102,.12);
-      color: var(--accent-2);
+      border-color: rgba(191,143,47,.42);
+      background: rgba(191,143,47,.16);
+      color: #8f6415;
     }}
     .row-form {{
-      color: var(--text);
+      color: var(--ink);
       font-size: 14px;
       font-weight: 700;
     }}
@@ -2395,35 +2804,36 @@ def page_html(
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 54px;
-      min-height: 54px;
+      min-width: 56px;
+      min-height: 56px;
       padding: 0 14px;
       border-radius: 18px;
+      font-family: "Bricolage Grotesque", sans-serif;
       font-size: 24px;
-      font-weight: 800;
-      color: #07120d;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      box-shadow: 0 14px 26px rgba(103,255,182,.16);
+      line-height: 1;
+      color: #10211a;
+      background: linear-gradient(135deg, #dcb963, #f0d894);
+      box-shadow: 0 16px 26px rgba(191,143,47,.16);
       animation: glowPulse 3.6s ease-in-out infinite;
     }}
-    .table-pick.pick-home {{ background: linear-gradient(135deg, #67ffb6, #b9ff7d); }}
-    .table-pick.pick-away {{ background: linear-gradient(135deg, #7db7ff, #9be7ff); }}
-    .table-pick.pick-draw {{ background: linear-gradient(135deg, #ffe066, #ffd18f); }}
-    .table-pick.pick-mixed {{ background: linear-gradient(135deg, #ffb37d, #ffe066); }}
+    .table-pick.pick-home {{ background: linear-gradient(135deg, #5bb889, #bfe0a7); }}
+    .table-pick.pick-away {{ background: linear-gradient(135deg, #9bb9d1, #d2e1ea); }}
+    .table-pick.pick-draw {{ background: linear-gradient(135deg, #d8b35d, #efd693); }}
+    .table-pick.pick-mixed {{ background: linear-gradient(135deg, #e7b18f, #f0d894); }}
     .table-percent {{
       margin-top: 8px;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: .06em;
+      letter-spacing: .08em;
     }}
     .confidence-meter {{
       margin-top: 10px;
       width: 88px;
       height: 6px;
       border-radius: 999px;
-      background: rgba(255,255,255,.08);
+      background: rgba(19,33,28,.10);
       overflow: hidden;
     }}
     .confidence-meter span {{
@@ -2431,48 +2841,111 @@ def page_html(
       height: 100%;
       border-radius: 999px;
     }}
-    .confidence-meter.confidence-elite span {{ background: linear-gradient(90deg, #67ffb6, #d9ff7f); }}
-    .confidence-meter.confidence-strong span {{ background: linear-gradient(90deg, #7db7ff, #67ffb6); }}
-    .confidence-meter.confidence-medium span {{ background: linear-gradient(90deg, #ffd18f, #ffe066); }}
+    .confidence-meter.confidence-elite span {{ background: linear-gradient(90deg, #4aa36f, #c8dd8f); }}
+    .confidence-meter.confidence-strong span {{ background: linear-gradient(90deg, #7eabc8, #4aa36f); }}
+    .confidence-meter.confidence-medium span {{ background: linear-gradient(90deg, #d6a554, #e7c76d); }}
     .poster {{
-      display: block; width: 100%; border-radius: 18px; border: 1px solid #2d4a34; background: #061008;
+      display: block;
+      width: 100%;
+      border-radius: 22px;
+      border: 1px solid rgba(19,33,28,.10);
+      background: #f4efe2;
     }}
-    .section-grid {{ display:grid; gap:18px; margin-top:18px; grid-template-columns: 1fr 1fr; }}
     .compact-table {{ min-width: 720px; }}
     .compact-table-shell {{ height: 100%; }}
     .match-list {{ display: grid; gap: 14px; }}
     .match-card {{
-      padding: 17px; border-radius: 22px; background: var(--panel-2); border: 1px solid rgba(103,255,182,.10);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
-      transition: transform .28s ease, border-color .28s ease, background .28s ease;
+      padding: 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(19,33,28,.08);
+      background: rgba(255,255,255,.64);
+      box-shadow: var(--shadow-soft);
+      transition: transform .22s ease, border-color .22s ease, background .22s ease;
     }}
     .match-card:hover {{
-      transform: translateY(-4px) scale(1.01);
-      border-color: rgba(103,255,182,.18);
-      background: rgba(20, 35, 22, 0.98);
+      transform: translateY(-4px);
+      border-color: rgba(191,143,47,.22);
+      background: rgba(255,255,255,.82);
     }}
-    .meta-row {{ display:flex; justify-content:space-between; gap:14px; align-items:flex-start; }}
+    .meta-row {{
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+    }}
     .pick-badge {{
-      min-width: 92px; border-radius: 18px; background: linear-gradient(180deg, rgba(19,38,23,.95), rgba(13,27,17,.95)); padding: 8px 10px;
-      border: 1px solid rgba(103,255,182,.22); text-align: center;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+      min-width: 92px;
+      padding: 9px 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(191,143,47,.16);
+      background: rgba(191,143,47,.08);
+      text-align: center;
     }}
-    .pick-value {{ display:block; font-size: 24px; font-weight: 800; color: var(--accent); }}
-    .pick-percent {{ display:block; font-size: 13px; color: var(--muted); }}
-    .teams {{ margin-top: 12px; font-size: 24px; font-weight: 700; }}
-    .teams span {{ color: var(--muted); font-size: 16px; font-weight: 500; }}
+    .pick-value {{
+      display: block;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 24px;
+      line-height: 1;
+      color: var(--forest);
+    }}
+    .pick-percent {{
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+    }}
+    .teams {{
+      margin-top: 12px;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 24px;
+      line-height: 1.1;
+      letter-spacing: -.03em;
+    }}
+    .teams span {{
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 600;
+    }}
     .stats-grid {{
-      margin-top: 14px; display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px;
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
     }}
     .stats-grid div {{
-      padding: 11px 12px; border-radius: 16px; background: rgba(255,255,255,.035); border: 1px solid rgba(140,255,114,.08);
+      padding: 11px 12px;
+      border-radius: 16px;
+      background: rgba(244,239,226,.92);
+      border: 1px solid rgba(19,33,28,.08);
     }}
-    .stats-grid strong {{ display:block; color: var(--accent-2); font-size: 12px; margin-bottom: 5px; }}
-    .stats-grid span {{ display:block; color: var(--text); font-size: 14px; line-height: 1.35; }}
-    .why {{ margin-top: 12px; font-size: 14px; color: var(--muted); }}
+    .stats-grid strong {{
+      display: block;
+      color: var(--gold);
+      font-size: 12px;
+      margin-bottom: 5px;
+    }}
+    .stats-grid span {{
+      display: block;
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.35;
+    }}
+    .why {{
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.56;
+    }}
     .tennis-state {{
-      min-width: 110px; padding: 8px 10px; border-radius: 14px; text-align:center;
-      color: var(--accent-2); background: #132617; border: 1px solid #2f5b39; font-size: 13px; font-weight: 700;
+      min-width: 110px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      text-align: center;
+      color: #8a651d;
+      background: rgba(191,143,47,.10);
+      border: 1px solid rgba(191,143,47,.18);
+      font-size: 13px;
+      font-weight: 700;
     }}
     .articles-grid {{
       display: grid;
@@ -2483,20 +2956,20 @@ def page_html(
       position: relative;
       overflow: hidden;
       border-radius: 24px;
-      background: linear-gradient(180deg, rgba(10,26,22,.98), rgba(8,14,14,.98));
-      border: 1px solid rgba(103,255,182,.12);
-      box-shadow: var(--shadow);
-      transition: transform .25s ease, border-color .25s ease;
+      border: 1px solid rgba(19,33,28,.08);
+      background: rgba(255,255,255,.72);
+      box-shadow: var(--shadow-soft);
+      transition: transform .22s ease, border-color .22s ease;
     }}
     .article-showcase:hover {{
       transform: translateY(-4px);
-      border-color: rgba(103,255,182,.24);
+      border-color: rgba(191,143,47,.22);
     }}
     .article-visual-wrap {{
       position: relative;
       height: 214px;
       overflow: hidden;
-      background: rgba(255,255,255,.04);
+      background: rgba(244,239,226,.92);
     }}
     .article-image {{
       width: 100%;
@@ -2507,7 +2980,7 @@ def page_html(
     .article-overlay {{
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, transparent 10%, rgba(4,12,10,.18) 50%, rgba(4,12,10,.75) 100%);
+      background: linear-gradient(180deg, transparent 10%, rgba(255,252,244,.10) 50%, rgba(255,252,244,.78) 100%);
     }}
     .article-badge-wrap {{
       position: absolute;
@@ -2521,106 +2994,111 @@ def page_html(
       object-fit: contain;
       border-radius: 16px;
       padding: 8px;
-      background: rgba(8,18,18,.86);
-      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,252,244,.86);
+      border: 1px solid rgba(19,33,28,.10);
       backdrop-filter: blur(12px);
     }}
-    .article-copy {{
-      padding: 18px;
-    }}
+    .article-copy {{ padding: 18px; }}
     .article-topline {{
-      color: var(--accent);
+      color: var(--gold);
       font-size: 12px;
       font-weight: 800;
-      letter-spacing: .08em;
+      letter-spacing: .10em;
       text-transform: uppercase;
     }}
     .article-copy h3 {{
       margin: 10px 0 8px;
-      font-size: 22px;
-      line-height: 1.25;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: -.03em;
+      color: var(--forest);
     }}
     .article-copy p {{
       margin: 12px 0 0;
       color: var(--muted);
       font-size: 14px;
-      line-height: 1.55;
+      line-height: 1.58;
     }}
     .article-link {{
-      display:inline-flex; margin-top:14px; color: var(--accent); text-decoration:none; font-weight:800;
+      display: inline-flex;
+      margin-top: 14px;
+      color: var(--forest);
+      text-decoration: none;
+      font-weight: 800;
     }}
     .favorites-board {{
-      border-radius: 22px;
-      border: 1px solid rgba(103,255,182,.10);
-      background: linear-gradient(180deg, rgba(10,25,22,.92), rgba(7,15,14,.96));
+      border-radius: 24px;
+      border: 1px solid rgba(19,33,28,.08);
+      background: rgba(255,255,255,.58);
       padding: 18px;
     }}
     .favorites-grid {{
-      display:grid;
+      display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
     }}
     .favorite-card {{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      min-height:140px;
-      padding:18px;
-      border-radius:20px;
-      border:1px solid rgba(255,224,102,.16);
-      text-decoration:none;
-      color:var(--text);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 140px;
+      padding: 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(191,143,47,.16);
       background:
-        radial-gradient(circle at top right, rgba(255,224,102,.10), transparent 28%),
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      transition: transform .2s ease, border-color .2s ease, background .2s ease;
+        radial-gradient(circle at top right, rgba(191,143,47,.10), transparent 30%),
+        linear-gradient(180deg, rgba(255,255,255,.86), rgba(244,239,226,.92));
+      text-decoration: none;
+      color: var(--ink);
+      transition: transform .20s ease, border-color .20s ease, background .20s ease;
     }}
     .favorite-card:hover {{
       transform: translateY(-3px);
-      border-color: rgba(255,224,102,.32);
+      border-color: rgba(191,143,47,.26);
       background:
-        radial-gradient(circle at top right, rgba(255,224,102,.14), transparent 32%),
-        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+        radial-gradient(circle at top right, rgba(191,143,47,.12), transparent 32%),
+        linear-gradient(180deg, rgba(255,255,255,.94), rgba(244,239,226,.96));
     }}
     .favorite-card-title {{
-      font-size:18px;
-      font-weight:800;
-      line-height:1.3;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 20px;
+      line-height: 1.15;
+      letter-spacing: -.03em;
     }}
     .favorite-card-meta {{
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.4;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
     }}
     .favorite-card-pick {{
-      margin-top:auto;
-      display:inline-flex;
-      align-items:center;
-      width:max-content;
-      min-height:34px;
-      padding:0 12px;
-      border-radius:999px;
-      background:rgba(103,255,182,.10);
-      color:var(--accent);
-      font-size:13px;
-      font-weight:800;
-      border:1px solid rgba(103,255,182,.14);
+      margin-top: auto;
+      display: inline-flex;
+      align-items: center;
+      width: max-content;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(191,143,47,.16);
+      background: rgba(191,143,47,.10);
+      color: #8c6417;
+      font-size: 13px;
+      font-weight: 800;
     }}
     .favorites-empty {{
       padding: 20px;
       border-radius: 18px;
-      border: 1px dashed rgba(255,255,255,.10);
+      border: 1px dashed rgba(19,33,28,.14);
+      background: rgba(244,239,226,.72);
       color: var(--muted);
       font-size: 14px;
-      line-height: 1.6;
-      background: rgba(255,255,255,.02);
+      line-height: 1.58;
     }}
     .bottom-dock {{
       position: sticky;
       bottom: 16px;
       z-index: 20;
       display: none;
-      gap: 10px;
       justify-content: center;
       margin-top: 18px;
     }}
@@ -2630,10 +3108,10 @@ def page_html(
       gap: 8px;
       padding: 10px;
       border-radius: 999px;
-      border: 1px solid rgba(103,255,182,.18);
-      background: rgba(5,16,13,.82);
+      border: 1px solid rgba(19,33,28,.10);
+      background: rgba(255,252,244,.90);
       backdrop-filter: blur(18px);
-      box-shadow: 0 18px 44px rgba(0,0,0,.28);
+      box-shadow: 0 18px 40px rgba(19,33,28,.12);
     }}
     .dock-link {{
       display: inline-flex;
@@ -2643,39 +3121,44 @@ def page_html(
       min-height: 42px;
       padding: 0 14px;
       border-radius: 999px;
-      color: var(--text);
       text-decoration: none;
+      color: var(--ink);
       font-size: 13px;
       font-weight: 800;
-      background: rgba(255,255,255,.03);
-      border: 1px solid transparent;
-      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+      background: rgba(244,239,226,.86);
+      transition: transform .18s ease, background .18s ease;
     }}
-    .dock-link:hover, .dock-link:active {{
+    .dock-link:hover,
+    .dock-link:active {{
       transform: translateY(-1px);
-      background: rgba(103,255,182,.10);
-      border-color: rgba(103,255,182,.18);
+      background: rgba(191,143,47,.12);
     }}
-    .footer {{ margin-top: 14px; color: var(--muted); font-size: 13px; }}
     .site-footer {{
       margin-top: 24px;
-      padding: 20px 22px;
-      border: 1px solid rgba(103,255,182,.12);
-      border-radius: 24px;
-      background: rgba(7,18,16,.82);
+      padding: 22px;
+      border-radius: 28px;
+      border: 1px solid rgba(19,33,28,.08);
+      background:
+        radial-gradient(circle at top right, rgba(191,143,47,.10), transparent 24%),
+        linear-gradient(180deg, rgba(255,252,244,.90), rgba(248,241,226,.94));
       display: grid;
       grid-template-columns: 1.1fr .9fr;
       gap: 20px;
+      box-shadow: var(--shadow);
     }}
     .footer-brand h3 {{
       margin: 0;
-      font-size: 24px;
-      color: var(--accent);
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: -.04em;
+      color: var(--forest);
     }}
-    .footer-brand p, .footer-links a {{
+    .footer-brand p,
+    .footer-links a {{
       color: var(--muted);
       font-size: 14px;
-      line-height: 1.6;
+      line-height: 1.58;
       text-decoration: none;
     }}
     .footer-links {{
@@ -2694,41 +3177,60 @@ def page_html(
     .match-list .reveal:nth-child(2n) {{ animation-delay: .06s; }}
     .match-list .reveal:nth-child(3n) {{ animation-delay: .12s; }}
     @keyframes riseIn {{
-      from {{ opacity:0; transform: translateY(24px) scale(.985); }}
-      to {{ opacity:1; transform: translateY(0) scale(1); }}
+      from {{ opacity: 0; transform: translateY(24px) scale(.985); }}
+      to {{ opacity: 1; transform: translateY(0) scale(1); }}
     }}
     @keyframes floatIn {{
       from {{ opacity: 0; transform: translateY(36px) scale(.96); }}
       to {{ opacity: 1; transform: translateY(0) scale(1); }}
     }}
-    @keyframes pulseOrbit {{
-      0%, 100% {{ transform: translate3d(0, 0, 0) scale(1); opacity: .7; }}
-      50% {{ transform: translate3d(-18px, -18px, 0) scale(1.08); opacity: 1; }}
-    }}
     @keyframes glowPulse {{
-      0%, 100% {{ box-shadow: 0 14px 26px rgba(103,255,182,.16); }}
-      50% {{ box-shadow: 0 16px 34px rgba(103,255,182,.26); }}
+      0%, 100% {{ box-shadow: 0 16px 26px rgba(191,143,47,.16); }}
+      50% {{ box-shadow: 0 18px 34px rgba(191,143,47,.22); }}
     }}
-    @media (max-width: 980px) {{
-      .hero-stats {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
-      .hero-strip {{ grid-template-columns: 1fr; }}
-      .grid {{ grid-template-columns: 1fr; }}
-      .section-grid {{ grid-template-columns: 1fr; }}
-      .stats-grid {{ grid-template-columns: 1fr; }}
-      .editorial-card {{ grid-template-columns: 1fr; }}
-      .editorial-image {{ width: 100%; height: 220px; }}
-      .spotlight-card h2, .editorial-copy h3 {{ font-size: 28px; }}
-      .articles-grid, .favorites-grid {{ grid-template-columns: 1fr; }}
-      .site-footer {{ grid-template-columns: 1fr; }}
+    @media (max-width: 1080px) {{
+      h1 {{ font-size: 50px; }}
+      .hero-overview,
+      .hero-strip,
+      .grid,
+      .section-grid,
+      .site-footer {{
+        grid-template-columns: 1fr;
+      }}
+      .hero-stats {{
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }}
+      .articles-grid,
+      .favorites-grid {{
+        grid-template-columns: 1fr;
+      }}
+      .editorial-card {{
+        grid-template-columns: 1fr;
+      }}
+      .editorial-image {{
+        width: 100%;
+        height: 220px;
+      }}
     }}
     @media (max-width: 720px) {{
       .wrap {{ padding: 16px 14px 104px; }}
-      h1 {{ font-size: 34px; }}
-      .toolbar {{ align-items: stretch; }}
-      .field, input, .btn, .ghost-btn {{ width: 100%; }}
-      .table-shell, .compact-table-shell {{ overflow-x: auto; }}
-      .prediction-table {{ min-width: 760px; }}
+      .hero {{ padding: 22px 18px; }}
+      .hero-top {{ grid-template-columns: 1fr; }}
+      h1 {{ font-size: 38px; }}
+      .sub {{ font-size: 16px; }}
       .hero-stats {{ grid-template-columns: 1fr 1fr; }}
+      .toolbar {{ align-items: stretch; }}
+      .field,
+      input,
+      .btn,
+      .ghost-btn {{
+        width: 100%;
+      }}
+      .table-shell,
+      .compact-table-shell {{
+        overflow-x: auto;
+      }}
+      .prediction-table {{ min-width: 760px; }}
       .bottom-dock {{ display: flex; }}
       .nav-links {{ display: none; }}
     }}
@@ -2737,53 +3239,75 @@ def page_html(
 <body>
   <div class="wrap">
     <section class="hero float-in">
-      <h1>GABFOOT Dashboard</h1>
-      <div class="sub">Interface operationnelle pour piloter les matchs surs, l'affiche Telegram et les boards annexes. Mise a jour: {now}</div>
-      <div class="nav-links">
-        <a class="nav-link" href="/">Site</a>
-        <a class="nav-link" href="#top-picks">Top picks</a>
-        <a class="nav-link" href="#botola-zone">Botola Pro</a>
-        <a class="nav-link" href="#tennis-zone">Tennis World</a>
-        <a class="nav-link" href="#articles-zone">Articles</a>
-      </div>
-      <div class="hero-stats">
-        <div class="hero-stat reveal">
-          <div class="hero-stat-label">Top picks</div>
-          <div class="hero-stat-value">{len(matches)}</div>
-          <div class="hero-stat-note">Matchs valides sur le filtre actuel</div>
+      <div class="hero-top">
+        <div>
+          <span class="hero-kicker">Control room GABFOOT</span>
+          <h1>Des picks mieux cadres, plus credibles et plus lisibles qu&apos;un portail surcharge.</h1>
+          <div class="sub">Le dashboard GABFOOT rassemble les matchs les plus solides, la Botola, le tennis, les news et le poster Telegram dans une seule salle de controle. Mise a jour: {now}</div>
+          <div class="nav-links">
+            <a class="nav-link" href="/">Accueil</a>
+            <a class="nav-link" href="#top-picks">Top picks</a>
+            <a class="nav-link" href="#botola-zone">Botola</a>
+            <a class="nav-link" href="#tennis-zone">Tennis</a>
+            <a class="nav-link" href="#articles-zone">Articles</a>
+          </div>
         </div>
-        <div class="hero-stat reveal">
-          <div class="hero-stat-label">Fiabilite moyenne</div>
-          <div class="hero-stat-value">{avg_confidence}%</div>
-          <div class="hero-stat-note">Lecture instantanee des pronostics</div>
-        </div>
-        <div class="hero-stat reveal">
-          <div class="hero-stat-label">Botola</div>
-          <div class="hero-stat-value">{len(botola)}</div>
-          <div class="hero-stat-note">Rencontres marocaines analysees</div>
-        </div>
-        <div class="hero-stat reveal">
-          <div class="hero-stat-label">Articles</div>
-          <div class="hero-stat-value">{len(articles)}</div>
-          <div class="hero-stat-note">News illustrees disponibles</div>
+        <div class="hero-badge">
+          <strong>{avg_confidence}%</strong>
+          <span>Fiabilite moyenne du board actif avec un filtre fixe a {min_percent}% minimum.</span>
         </div>
       </div>
-      <div class="market-strip">
-        {market_strip}
+
+      <div class="hero-overview">
+        <div>
+          <div class="hero-stats">
+            <div class="hero-stat reveal">
+              <div class="hero-stat-label">Top picks</div>
+              <div class="hero-stat-value">{len(matches)}</div>
+              <div class="hero-stat-note">Matchs gardes dans le tri principal.</div>
+            </div>
+            <div class="hero-stat reveal">
+              <div class="hero-stat-label">Botola</div>
+              <div class="hero-stat-value">{len(botola)}</div>
+              <div class="hero-stat-note">Signaux marocains actifs aujourd&apos;hui.</div>
+            </div>
+            <div class="hero-stat reveal">
+              <div class="hero-stat-label">Tennis</div>
+              <div class="hero-stat-value">{len(tennis)}</div>
+              <div class="hero-stat-note">Rencontres ATP et WTA surveillees.</div>
+            </div>
+            <div class="hero-stat reveal">
+              <div class="hero-stat-label">Articles</div>
+              <div class="hero-stat-value">{len(articles)}</div>
+              <div class="hero-stat-note">Angles editoriaux pour donner du relief.</div>
+            </div>
+          </div>
+          <div class="market-strip">
+            {market_strip}
+          </div>
+          {notice_html}
+        </div>
+
+        <aside class="control-card">
+          <span class="control-label">Pilotage rapide</span>
+          <h2>Regle le board en quelques secondes.</h2>
+          <p class="control-copy">Le panneau reste volontairement simple: tu filtres le volume, tu ajustes le seuil de confiance et tu peux pousser le poster Telegram sans sortir du dashboard.</p>
+          <form class="toolbar" method="get" action="/dashboard">
+            <div class="field">
+              <label for="limit">Nombre de matchs</label>
+              <input id="limit" name="limit" type="number" min="1" max="12" value="{limit}">
+            </div>
+            <div class="field">
+              <label for="min_percent">Seuil minimal</label>
+              <input id="min_percent" name="min_percent" type="number" min="55" max="90" value="{min_percent}">
+            </div>
+            <button class="btn" type="submit">Mettre a jour</button>
+            <a class="ghost-btn" href="/send?limit={limit}&min_percent={min_percent}">Envoyer sur Telegram</a>
+          </form>
+          <div class="hero-footer">Tu restes sur une logique premium: peu de bruit, un tri plus net, et une sortie Telegram qui garde la meme coherence visuelle.</div>
+        </aside>
       </div>
-      <form class="toolbar" method="get" action="/dashboard">
-        <div class="field">
-          <label for="limit">Nombre de matchs</label>
-          <input id="limit" name="limit" type="number" min="1" max="12" value="{limit}">
-        </div>
-        <div class="field">
-          <label for="min_percent">Seuil minimal</label>
-          <input id="min_percent" name="min_percent" type="number" min="55" max="90" value="{min_percent}">
-        </div>
-        <button class="btn" type="submit">Actualiser</button>
-        <a class="ghost-btn" href="/send?limit={limit}&min_percent={min_percent}">Envoyer sur Telegram</a>
-      </form>
-      {notice_html}
+
       <div class="hero-strip">
         {lead_panel}
         {editorial_panel}
@@ -2794,11 +3318,12 @@ def page_html(
       <section id="top-picks" class="panel reveal section-anchor">
         <div class="panel-head">
           <div class="panel-title">
-            <span class="panel-pill">Premium Board</span>
-            <h2>Matchs les plus surs</h2>
+            <span class="panel-pill">Premium board</span>
+            <h2>Matchs les plus solides</h2>
           </div>
-          <span class="footer">{len(matches)} match(s) retenu(s)</span>
+          <span class="footer">{len(matches)} match(s) retenu(s) dans ce run</span>
         </div>
+        <p class="section-note">La lecture reste immediate: horaire, contexte, recommandation, taux de confiance et lien direct vers la fiche match.</p>
         {prediction_table}
       </section>
       {image_block}
@@ -2809,20 +3334,22 @@ def page_html(
         <div class="panel-head">
           <div class="panel-title">
             <span class="panel-pill">Maroc</span>
-            <h2>Pronostic Botola Pro</h2>
+            <h2>Signal Botola Pro</h2>
           </div>
           <span class="footer">Premiere ligue marocaine</span>
         </div>
+        <p class="section-note">Une entree locale plus forte pour donner au produit une personnalite claire et un axe marocain visible.</p>
         {botola_table}
       </section>
       <section id="tennis-zone" class="panel reveal section-anchor">
         <div class="panel-head">
           <div class="panel-title">
-            <span class="panel-pill">Live Board</span>
-            <h2>Tennis World</h2>
+            <span class="panel-pill">Multi-board</span>
+            <h2>Tennis world</h2>
           </div>
           <span class="footer">ATP / WTA</span>
         </div>
+        <p class="section-note">Le board secondaire montre que GABFOOT peut ouvrir d&apos;autres flux sans perdre sa direction visuelle.</p>
         {tennis_table}
       </section>
     </div>
@@ -2836,10 +3363,11 @@ def page_html(
         <div class="panel-head">
           <div class="panel-title">
             <span class="panel-pill">Editorial</span>
-            <h2>Articles clubs & joueurs</h2>
+            <h2>Radar clubs & joueurs</h2>
           </div>
           <span class="footer">Actualites football</span>
         </div>
+        <p class="section-note">Le produit ressemble moins a une simple grille de cotes quand l&apos;editorial est traite avec la meme exigence visuelle que les picks.</p>
         <div class="articles-grid">
           {article_cards}
         </div>
@@ -2859,15 +3387,14 @@ def page_html(
     <footer class="site-footer reveal">
       <div class="footer-brand">
         <h3>GABFOOT</h3>
-        <p>Plateforme pronostics foot premium, matchs classes par heure, lecture rapide des signaux et actualites clubs & joueurs dans une seule experience web.</p>
+        <p>Le dashboard prend maintenant une direction plus haut de gamme: sable chaud, vert profond, accent or et hierarchie beaucoup plus nette. L&apos;objectif n&apos;est pas de faire plus charge qu&apos;un gros portail de pronostics, mais de rendre le signal plus clair et plus credible.</p>
       </div>
       <div class="footer-links">
-        <a href="/">Site officiel</a>
-        <a href="#top-picks">Top picks</a>
-        <a href="#favorites-zone">Mes favoris</a>
-        <a href="#botola-zone">Pronostics Botola</a>
-        <a href="#tennis-zone">Tennis World</a>
-        <a href="#articles-zone">Articles football</a>
+        <a href="/">Retour a l'accueil</a>
+        <a href="#top-picks">Ouvrir les top picks</a>
+        <a href="#favorites-zone">Voir mes favoris</a>
+        <a href="#botola-zone">Board Botola</a>
+        <a href="#articles-zone">Radar editorial</a>
       </div>
     </footer>
   </div>
