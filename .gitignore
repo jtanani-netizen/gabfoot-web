@@ -6,3 +6,5 @@ __pycache__/
 *.pyo
 *.pyd
 .DS_Store
+dist/
+android_app/build/
