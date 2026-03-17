@@ -27,6 +27,8 @@ HOST = "127.0.0.1"
 PORT = 8012
 CARD_PATH = CARDS_DIR / "web_safe_matches_card.png"
 ICON_PATH = CARDS_DIR / "gabfoot_icon.png"
+SITE_ASSETS_DIR = Path(__file__).resolve().parent / "site_assets"
+DASHBOARD_HERO_IMAGE_PATH = SITE_ASSETS_DIR / "dashboard-hero.jpg"
 BOTOLA_LEAGUE_ID = 530
 TEAM_CACHE: dict[int, dict] = {}
 APP_CACHE_DIR = Path(__file__).resolve().parent / ".cache"
@@ -40,6 +42,7 @@ _REFRESH_IN_FLIGHT: set[str] = set()
 ARTICLE_IMAGE_CACHE: dict[str, str] = {}
 ARTICLE_IMAGE_LOCK = threading.Lock()
 ARTICLE_IMAGE_FETCH_ENABLED = os.getenv("GABFOOT_FETCH_ARTICLE_IMAGES", "").strip() == "1"
+UPDATES_FILE = Path(__file__).resolve().parent / "updates.json"
 
 
 def configured_public_url() -> str:
@@ -56,6 +59,35 @@ def configured_public_url() -> str:
         if candidate.startswith("http://") or candidate.startswith("https://"):
             return candidate.rstrip("/")
     return ""
+
+
+def load_site_updates() -> list[dict[str, object]]:
+    try:
+        payload = json.loads(UPDATES_FILE.read_text(encoding="utf-8"))
+    except OSError:
+        return []
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(payload, list):
+        return []
+
+    cleaned: list[dict[str, object]] = []
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        bullets = entry.get("bullets", [])
+        if not isinstance(bullets, list):
+            bullets = []
+        cleaned.append(
+            {
+                "date": str(entry.get("date", "")).strip(),
+                "label": str(entry.get("label", "Produit")).strip() or "Produit",
+                "title": str(entry.get("title", "")).strip(),
+                "summary": str(entry.get("summary", "")).strip(),
+                "bullets": [str(bullet).strip() for bullet in bullets if str(bullet).strip()],
+            }
+        )
+    return cleaned
 
 
 def request_scheme(handler: BaseHTTPRequestHandler) -> str:
@@ -425,7 +457,7 @@ def football_articles(matches: list[InterestingMatch], botola: list[dict[str, ob
         payload = get_team_payload(team_id)
         team_name = payload.get("details", {}).get("name", "")
         team_logo = (
-            payload.get("sportsTeamJSONLD", {}).get("logo")
+            payload.get("details", {}).get("sportsTeamJSONLD", {}).get("logo")
             or payload.get("details", {}).get("logo")
             or ""
         )
@@ -500,6 +532,23 @@ def interaction_script() -> str:
     if (!target) return;
     playSoftTap();
   }, { passive: true });
+
+  const revealItems = Array.from(document.querySelectorAll('.reveal'));
+  if ('IntersectionObserver' in window && revealItems.length) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('in-view');
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.14, rootMargin: '0px 0px -40px 0px' });
+    revealItems.forEach((item, index) => {
+      item.style.setProperty('--reveal-delay', `${Math.min(index * 40, 280)}ms`);
+      observer.observe(item);
+    });
+  } else {
+    revealItems.forEach((item) => item.classList.add('in-view'));
+  }
 })();
 </script>
 """
@@ -889,7 +938,7 @@ def render_landing_pick_cards(matches: list[InterestingMatch]) -> str:
         why = " • ".join(match.why[:2]) if match.why else "Forme, classement et momentum croises."
         cards.append(
             f"""
-            <article class="landing-pick-card {pick_theme(match.prediction)}">
+            <article class="landing-pick-card reveal {pick_theme(match.prediction)}">
               <div class="landing-pick-top">
                 <div>
                   <div class="landing-kickoff">{html.escape(fmt_kickoff(match.kickoff_utc))}</div>
@@ -925,7 +974,7 @@ def render_landing_article_teasers(articles: list[dict[str, str]]) -> str:
         )
         cards.append(
             f"""
-            <article class="landing-article-card">
+            <article class="landing-article-card reveal">
               {visual}
               <div class="landing-article-copy">
                 <div class="landing-article-source">{html.escape(item.get("source", "Football News"))}</div>
@@ -942,6 +991,30 @@ def render_landing_article_teasers(articles: list[dict[str, str]]) -> str:
     return "".join(cards) or '<div class="landing-empty">Les articles clubs et joueurs seront affiches ici.</div>'
 
 
+def render_landing_update_teasers(updates: list[dict[str, object]]) -> str:
+    cards: list[str] = []
+    for item in updates[:3]:
+        bullets = item.get("bullets", [])
+        bullet_line = " • ".join(str(bullet) for bullet in bullets[:2])
+        cards.append(
+            f"""
+            <article class="landing-article-card reveal">
+              <div class="landing-article-image landing-article-fallback">UPDATE</div>
+              <div class="landing-article-copy">
+                <div class="landing-article-source">{html.escape(str(item.get("label", "Produit")))} • {html.escape(str(item.get("date", "")))}</div>
+                <h3>{html.escape(str(item.get("title", "")))}</h3>
+                <p>{html.escape(str(item.get("summary", "")))}</p>
+                <div class="landing-article-bottom">
+                  <span>{html.escape(bullet_line)}</span>
+                  <a class="landing-article-link" href="/updates">Voir</a>
+                </div>
+              </div>
+            </article>
+            """
+        )
+    return "".join(cards) or '<div class="landing-empty">Les prochaines mises a jour du produit apparaitront ici.</div>'
+
+
 def landing_html(
     matches: list[InterestingMatch],
     card_path: Path | None,
@@ -953,6 +1026,7 @@ def landing_html(
     articles: list[dict[str, str]] | None = None,
     site_url: str = "",
 ) -> str:
+    site_updates = load_site_updates()
     botola = botola or []
     tennis = tennis or []
     articles = articles or []
@@ -1068,10 +1142,10 @@ def landing_html(
         linear-gradient(180deg, var(--canvas) 0%, var(--canvas-2) 100%);
     }}
     a {{ color: inherit; }}
-    .site-shell {{ max-width: 1320px; margin: 0 auto; padding: 24px 18px 46px; }}
+    .site-shell {{ max-width: 1380px; margin: 0 auto; padding: 12px 20px 52px; }}
     .site-topbar {{
-      display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 18px;
-      padding: 12px 16px; border-radius: 24px; border:1px solid rgba(255,255,255,.48);
+      display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 16px;
+      padding: 14px 18px; border-radius: 24px; border:1px solid rgba(255,255,255,.48);
       background: rgba(255,255,255,.48); backdrop-filter: blur(14px);
     }}
     .site-brand {{ display:flex; align-items:center; gap:14px; text-decoration:none; color:var(--ink); }}
@@ -1098,11 +1172,12 @@ def landing_html(
       box-shadow: 0 16px 28px rgba(30,91,67,.18);
     }}
     .hero-stage {{
-      position:relative; overflow:hidden; display:grid; grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr); gap:24px;
-      padding:30px; border-radius:var(--radius-xl); border:1px solid rgba(255,255,255,.50);
+      position:relative; overflow:hidden; display:grid; grid-template-columns: minmax(0, 1.14fr) minmax(360px, .86fr); gap:28px; align-items:start;
+      padding:28px; border-radius:var(--radius-xl); border:1px solid rgba(255,255,255,.50);
       background:
         radial-gradient(circle at 12% 0%, rgba(200,154,43,.16), transparent 28%),
         radial-gradient(circle at 100% 16%, rgba(30,91,67,.16), transparent 22%),
+        radial-gradient(circle at 50% 100%, rgba(78,136,93,.14), transparent 32%),
         linear-gradient(135deg, rgba(255,251,245,.96), rgba(246,236,221,.98));
       box-shadow: var(--shadow);
     }}
@@ -1112,8 +1187,42 @@ def landing_html(
       pointer-events:none;
       animation: driftGlow 6s ease-in-out infinite;
     }}
+    .hero-stage::after {{
+      content:""; position:absolute; inset:0; pointer-events:none; opacity:.52;
+      background:
+        radial-gradient(circle at 50% 102%, rgba(18,71,52,.18), transparent 24%),
+        linear-gradient(90deg, transparent 14%, rgba(30,91,67,.10) 14.4%, rgba(30,91,67,.10) 14.8%, transparent 15.2%, transparent 84.8%, rgba(30,91,67,.10) 85.2%, rgba(30,91,67,.10) 85.6%, transparent 86%),
+        linear-gradient(transparent 76%, rgba(30,91,67,.10) 76.4%, rgba(30,91,67,.10) 76.8%, transparent 77.2%),
+        radial-gradient(circle at 50% 76%, transparent 0 74px, rgba(30,91,67,.10) 75px, rgba(30,91,67,.10) 77px, transparent 78px);
+    }}
     .hero-copy, .hero-side {{ position:relative; z-index:1; }}
-    .hero-copy {{ display:flex; flex-direction:column; gap:18px; }}
+    .hero-copy {{ display:flex; flex-direction:column; gap:16px; justify-content:space-between; min-width:0; }}
+    .hero-decor {{
+      position:absolute; inset:0; pointer-events:none; z-index:0;
+    }}
+    .hero-ball {{
+      position:absolute; right:30px; top:26px; width:74px; height:74px; border-radius:50%;
+      background:
+        radial-gradient(circle at 32% 30%, rgba(255,255,255,.92), rgba(244,242,236,.98) 54%, rgba(212,208,197,.96) 100%);
+      box-shadow:
+        inset -10px -14px 20px rgba(0,0,0,.08),
+        0 20px 32px rgba(20,57,43,.16);
+      animation: floatBall 7s ease-in-out infinite;
+    }}
+    .hero-ball::before {{
+      content:""; position:absolute; inset:18px; border-radius:50%;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(17,39,30,.88) 0 18%, transparent 19%),
+        linear-gradient(36deg, transparent 44%, rgba(17,39,30,.88) 45% 49%, transparent 50%),
+        linear-gradient(-38deg, transparent 44%, rgba(17,39,30,.88) 45% 49%, transparent 50%);
+      opacity:.92;
+    }}
+    .hero-glow {{
+      position:absolute; left:-40px; bottom:-60px; width:320px; height:180px; border-radius:50%;
+      background:radial-gradient(circle, rgba(200,154,43,.20), transparent 68%);
+      filter:blur(8px);
+      animation: pulseGlow 8s ease-in-out infinite;
+    }}
     .eyebrow {{
       display:inline-flex; width:max-content; min-height:34px; align-items:center; padding:0 12px;
       border-radius:999px; background:rgba(200,154,43,.14); color:#885f1b;
@@ -1121,12 +1230,12 @@ def landing_html(
     }}
     .hero-copy h1 {{
       margin:0; font-family:"Bricolage Grotesque", sans-serif;
-      font-size:clamp(3.6rem, 7vw, 6.6rem); line-height:.92; letter-spacing:-.03em; max-width: 780px;
+      font-size:clamp(3rem, 6vw, 5.4rem); line-height:.9; letter-spacing:-.03em; max-width: 720px;
     }}
     .hero-copy p {{
-      margin:0; max-width: 690px; color:var(--ink-soft); font-size:18px; line-height:1.65;
+      margin:0; max-width: 660px; color:var(--ink-soft); font-size:17px; line-height:1.58;
     }}
-    .hero-actions {{ display:flex; gap:12px; flex-wrap:wrap; }}
+    .hero-actions {{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }}
     .site-btn, .ghost-site-btn, .outline-btn {{
       min-height:50px; padding:0 18px; border-radius:16px; display:inline-flex; align-items:center; justify-content:center;
       text-decoration:none; font-weight:800; transition:transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
@@ -1139,16 +1248,14 @@ def landing_html(
       background:rgba(255,255,255,.72); border:1px solid var(--line); color:var(--ink);
     }}
     .site-btn:hover, .ghost-site-btn:hover, .outline-btn:hover {{ transform:translateY(-1px); }}
-    .hero-facts {{
-      display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px;
-    }}
+    .hero-facts {{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; }}
     .hero-fact {{
-      padding:16px; border-radius:22px; border:1px solid rgba(255,255,255,.48);
+      padding:14px; border-radius:22px; border:1px solid rgba(255,255,255,.48);
       background:linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.56));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.56);
     }}
     .hero-fact strong {{
-      display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:34px; line-height:1; color:var(--forest);
+      display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:30px; line-height:1; color:var(--forest);
     }}
     .hero-fact span {{ display:block; margin-top:8px; color:var(--ink-soft); font-size:14px; line-height:1.45; }}
     .market-strip {{
@@ -1169,7 +1276,7 @@ def landing_html(
       padding:14px 16px; border-radius:18px; border:1px solid rgba(196,81,45,.18);
       background:rgba(196,81,45,.08); color:#8c4529; font-size:14px; line-height:1.55;
     }}
-    .hero-side {{ display:grid; gap:14px; }}
+    .hero-side {{ display:grid; gap:16px; align-content:start; min-width:0; }}
     .hero-card {{
       border-radius:var(--radius-lg); border:1px solid rgba(255,255,255,.52);
       background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.58));
@@ -1219,23 +1326,37 @@ def landing_html(
       display:flex; align-items:center; justify-content:center; color:#f8ebd0; font-weight:800; letter-spacing:.08em;
     }}
     .section-block {{
-      margin-top:22px; padding:24px; border-radius:var(--radius-xl); border:1px solid rgba(255,255,255,.44);
+      margin-top:24px; padding:28px; border-radius:var(--radius-xl); border:1px solid rgba(255,255,255,.44);
       background:var(--paper); box-shadow: var(--shadow); backdrop-filter: blur(14px);
+      position:relative; overflow:hidden;
+    }}
+    .section-block::before {{
+      content:""; position:absolute; inset:0; pointer-events:none; opacity:.42;
+      background:
+        radial-gradient(circle at 10% 18%, rgba(200,154,43,.12), transparent 18%),
+        radial-gradient(circle at 90% 16%, rgba(30,91,67,.10), transparent 16%),
+        linear-gradient(180deg, transparent 78%, rgba(30,91,67,.08) 78.4%, rgba(30,91,67,.08) 78.8%, transparent 79.2%);
     }}
     .section-head {{
-      display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin-bottom:18px;
+      display:grid; grid-template-columns:minmax(0, 1fr) minmax(300px, 440px); align-items:end; gap:18px; margin-bottom:20px; position:relative; z-index:1;
     }}
     .section-head h2 {{
       margin:10px 0 0; font-family:"Bricolage Grotesque", sans-serif; font-size:52px; line-height:.92; letter-spacing:-.04em;
     }}
     .section-head p {{ max-width:560px; margin:0; color:var(--ink-soft); font-size:15px; line-height:1.6; }}
-    .offer-grid {{
-      display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px;
-    }}
+    .offer-grid {{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }}
     .offer-card {{
-      min-height:210px; padding:20px; border-radius:24px; border:1px solid var(--line);
+      min-height:220px; padding:22px; border-radius:24px; border:1px solid var(--line);
       background:linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,250,241,.92));
+      position:relative; overflow:hidden; display:flex; flex-direction:column;
+      transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
     }}
+    .offer-card::after {{
+      content:""; position:absolute; inset:auto -40px -60px auto; width:140px; height:140px; border-radius:50%;
+      background:radial-gradient(circle, rgba(30,91,67,.10), transparent 70%);
+      opacity:.9;
+    }}
+    .offer-card:hover {{ transform:translateY(-4px); border-color:var(--line-strong); box-shadow:0 18px 34px rgba(20,57,43,.10); }}
     .offer-index {{
       width:46px; height:46px; display:grid; place-items:center; border-radius:16px;
       font-family:"Bricolage Grotesque", sans-serif; font-size:22px; font-weight:800;
@@ -1243,16 +1364,45 @@ def landing_html(
     }}
     .offer-card strong {{ display:block; margin-top:14px; font-size:20px; }}
     .offer-card p {{ margin:10px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.62; }}
-    .preview-grid {{ display:grid; grid-template-columns:1.04fr .96fr; gap:16px; align-items:start; }}
-    .landing-stack, .landing-news-grid {{ display:grid; gap:14px; }}
+    .preview-grid {{ display:grid; grid-template-columns:minmax(0, 1.16fr) minmax(320px, .84fr); gap:18px; align-items:stretch; }}
+    .landing-stack, .landing-news-grid {{ display:grid; gap:14px; align-content:start; }}
+    .preview-side {{ display:grid; gap:16px; align-content:start; }}
+    .preview-side-block {{
+      height:100%; padding:18px; border-radius:26px; border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,249,239,.92));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.64);
+      display:flex; flex-direction:column; gap:16px;
+    }}
+    .preview-side-head {{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:14px;
+    }}
+    .preview-side-head span {{
+      display:block; color:#8b6220; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    }}
+    .preview-side-head strong {{
+      display:block; margin-top:6px; font-family:"Bricolage Grotesque", sans-serif; font-size:26px; line-height:1; letter-spacing:-.03em;
+    }}
+    .preview-side-head a {{
+      min-height:38px; padding:0 14px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center;
+      text-decoration:none; color:var(--forest); font-size:13px; font-weight:800; border:1px solid rgba(16,40,31,.10);
+      background:rgba(255,255,255,.72);
+    }}
     .landing-pick-card {{
-      padding:18px; border-radius:24px; border:1px solid var(--line);
+      min-height:238px; padding:18px; border-radius:24px; border:1px solid var(--line);
       background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,252,246,.92));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.68);
+      position:relative; overflow:hidden; display:flex; flex-direction:column;
+      transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+    }}
+    .landing-pick-card::before {{
+      content:""; position:absolute; inset:auto 0 0 0; height:54px;
+      background:linear-gradient(180deg, transparent, rgba(30,91,67,.08));
+      pointer-events:none;
     }}
     .landing-pick-card.pick-home {{ background:linear-gradient(135deg, rgba(227,246,238,.95), rgba(255,252,246,.95)); }}
     .landing-pick-card.pick-away {{ background:linear-gradient(135deg, rgba(230,238,252,.95), rgba(255,252,246,.95)); }}
     .landing-pick-card.pick-draw {{ background:linear-gradient(135deg, rgba(252,243,216,.95), rgba(255,252,246,.95)); }}
+    .landing-pick-card:hover {{ transform:translateY(-4px); border-color:var(--line-strong); box-shadow:0 18px 34px rgba(20,57,43,.10); }}
     .landing-pick-top {{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }}
     .landing-kickoff {{ color:#89611c; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }}
     .landing-pick-card h3 {{ margin:10px 0 8px; font-family:"Bricolage Grotesque", sans-serif; font-size:26px; line-height:1.05; letter-spacing:-.03em; }}
@@ -1266,16 +1416,19 @@ def landing_html(
       display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:28px; font-weight:800; color:var(--forest); line-height:1;
     }}
     .pick-percent {{ display:block; margin-top:5px; color:var(--ink-soft); font-size:12px; font-weight:800; }}
-    .landing-pick-card p {{ margin:14px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.6; }}
+    .landing-pick-card p {{ margin:14px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.6; flex:1 1 auto; }}
     .landing-pick-meta {{
-      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; padding-top:14px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:auto; padding-top:14px;
       border-top:1px solid rgba(16,40,31,.08); color:var(--ink-soft); font-size:13px;
     }}
     .landing-pick-meta a {{ text-decoration:none; color:var(--forest); font-weight:800; }}
     .landing-article-card {{
-      display:grid; grid-template-columns:148px 1fr; gap:14px; padding:14px; border-radius:24px; border:1px solid var(--line);
+      display:grid; grid-template-columns:148px minmax(0, 1fr); gap:14px; padding:14px; border-radius:24px; border:1px solid var(--line);
       background:linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,251,244,.92));
+      min-height:176px; align-items:stretch;
+      transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease;
     }}
+    .landing-article-card:hover {{ transform:translateY(-4px); border-color:var(--line-strong); box-shadow:0 18px 34px rgba(20,57,43,.10); }}
     .landing-article-image {{
       width:148px; height:148px; object-fit:cover; border-radius:20px; display:block; background:var(--forest-deep);
     }}
@@ -1286,20 +1439,50 @@ def landing_html(
     .landing-article-copy h3 {{
       margin:8px 0; font-family:"Bricolage Grotesque", sans-serif; font-size:20px; line-height:1.18; letter-spacing:-.02em;
     }}
+    .landing-article-copy {{ display:flex; flex-direction:column; min-width:0; }}
     .landing-article-copy p {{ margin:0; color:var(--ink-soft); font-size:14px; line-height:1.55; }}
     .landing-article-bottom {{
-      display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; color:var(--ink-soft); font-size:13px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:auto; padding-top:12px; color:var(--ink-soft); font-size:13px;
     }}
     .landing-article-link {{ text-decoration:none; color:var(--forest); font-weight:800; }}
-    .collection-grid {{
-      display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px;
+    .architecture-grid {{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px; }}
+    .architecture-card {{
+      min-height:220px; padding:22px; border-radius:26px; border:1px solid var(--line);
+      background:
+        radial-gradient(circle at top right, rgba(200,154,43,.16), transparent 34%),
+        linear-gradient(180deg, rgba(255,255,255,.92), rgba(250,244,233,.96));
+      position:relative; overflow:hidden; display:flex; flex-direction:column; gap:14px;
     }}
+    .architecture-card::after {{
+      content:""; position:absolute; inset:auto -26px -34px auto; width:118px; height:118px; border-radius:50%;
+      background:radial-gradient(circle, rgba(30,91,67,.10), transparent 68%);
+    }}
+    .architecture-step {{
+      width:50px; height:50px; border-radius:18px; display:grid; place-items:center;
+      font-family:"Bricolage Grotesque", sans-serif; font-size:22px; font-weight:800; color:var(--forest);
+      background:linear-gradient(135deg, rgba(30,91,67,.14), rgba(200,154,43,.22));
+    }}
+    .architecture-card strong {{
+      display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:28px; line-height:1.02; letter-spacing:-.03em;
+    }}
+    .architecture-card p {{ margin:0; color:var(--ink-soft); font-size:14px; line-height:1.62; flex:1 1 auto; }}
+    .architecture-link {{
+      text-decoration:none; color:var(--forest); font-weight:800; position:relative; z-index:1;
+    }}
+    .collection-grid {{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }}
     .collection-card {{
-      min-height:210px; padding:20px; border-radius:26px; text-decoration:none; color:var(--ink); border:1px solid var(--line);
+      min-height:220px; padding:22px; border-radius:26px; text-decoration:none; color:var(--ink); border:1px solid var(--line);
       background:
         radial-gradient(circle at top right, rgba(200,154,43,.18), transparent 36%),
+        radial-gradient(circle at bottom left, rgba(30,91,67,.10), transparent 28%),
         linear-gradient(180deg, rgba(255,255,255,.92), rgba(250,244,233,.96));
       transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+      position:relative; overflow:hidden; display:flex; flex-direction:column;
+    }}
+    .collection-card::after {{
+      content:""; position:absolute; left:-14px; bottom:-14px; width:92px; height:92px; border-radius:50%;
+      border:1px solid rgba(30,91,67,.10);
+      opacity:.8;
     }}
     .collection-card:hover {{ transform:translateY(-3px); border-color:var(--line-strong); box-shadow: var(--shadow); }}
     .collection-card span {{
@@ -1308,10 +1491,10 @@ def landing_html(
     .collection-card strong {{
       display:block; margin-top:14px; font-family:"Bricolage Grotesque", sans-serif; font-size:28px; line-height:1.02; letter-spacing:-.03em;
     }}
-    .collection-card p {{ margin:12px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.6; }}
+    .collection-card p {{ margin:12px 0 0; color:var(--ink-soft); font-size:14px; line-height:1.6; flex:1 1 auto; }}
     .site-footer {{
       margin-top:20px; padding:22px 24px; border-radius:28px; border:1px solid rgba(255,255,255,.48);
-      background:rgba(255,250,242,.70); display:grid; grid-template-columns:1.1fr .9fr; gap:18px;
+      background:rgba(255,250,242,.70); display:grid; grid-template-columns:minmax(0, 1.1fr) minmax(260px, .9fr); gap:18px; align-items:start;
     }}
     .site-footer h3 {{
       margin:0; font-family:"Bricolage Grotesque", sans-serif; font-size:34px; line-height:1; letter-spacing:-.03em;
@@ -1324,26 +1507,52 @@ def landing_html(
       padding:18px; border-radius:18px; border:1px dashed rgba(16,40,31,.16);
       color:var(--ink-soft); background:rgba(255,255,255,.46); font-size:14px; line-height:1.6;
     }}
+    .reveal {{
+      opacity:0; transform:translateY(24px) scale(.985);
+      transition:
+        opacity .72s ease,
+        transform .72s cubic-bezier(.2,.8,.2,1);
+      transition-delay: var(--reveal-delay, 0ms);
+    }}
+    .reveal.in-view {{
+      opacity:1; transform:translateY(0) scale(1);
+    }}
     @keyframes driftGlow {{
       0%, 100% {{ transform: translate3d(0, 0, 0) scale(1); opacity:.72; }}
       50% {{ transform: translate3d(-20px, -16px, 0) scale(1.05); opacity:1; }}
     }}
+    @keyframes floatBall {{
+      0%, 100% {{ transform: translate3d(0, 0, 0) rotate(0deg); }}
+      50% {{ transform: translate3d(-10px, 10px, 0) rotate(9deg); }}
+    }}
+    @keyframes pulseGlow {{
+      0%, 100% {{ transform: scale(1); opacity:.72; }}
+      50% {{ transform: scale(1.08); opacity:1; }}
+    }}
     @media (max-width: 1140px) {{
-      .hero-stage, .preview-grid {{ grid-template-columns: 1fr; }}
+      .hero-stage {{ grid-template-columns: 1fr; }}
+      .section-head {{ grid-template-columns:1fr; }}
+      .offer-grid, .architecture-grid, .collection-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+      .preview-grid {{ grid-template-columns: 1fr; }}
+      .preview-side {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
       .hero-facts {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
-      .collection-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
     }}
     @media (max-width: 760px) {{
       .site-shell {{ padding:16px 14px 32px; }}
       .site-topbar {{ align-items:flex-start; flex-direction:column; }}
       .site-nav {{ width:100%; justify-content:flex-start; }}
-      .hero-stage {{ padding:20px; }}
+      .hero-stage {{ padding:18px; }}
+      .hero-ball {{ width:54px; height:54px; right:16px; top:18px; }}
       .hero-copy h1 {{ font-size: clamp(3rem, 15vw, 4.8rem); }}
-      .hero-facts, .offer-grid, .collection-grid {{ grid-template-columns:1fr; }}
+      .preview-grid, .preview-side, .hero-facts, .offer-grid, .architecture-grid, .collection-grid {{ grid-template-columns:1fr; }}
       .poster-card, .editorial-card, .landing-article-card, .site-footer {{ grid-template-columns:1fr; }}
       .poster-visual, .editorial-thumb, .landing-article-image {{ width:100%; height:220px; }}
-      .section-head {{ flex-direction:column; align-items:flex-start; }}
+      .section-head {{ grid-template-columns:1fr; }}
       .section-head h2 {{ font-size:42px; }}
+    }}
+    @media (prefers-reduced-motion: reduce) {{
+      .hero-stage::before, .hero-ball, .hero-glow {{ animation:none; }}
+      html {{ scroll-behavior:auto; }}
     }}
   </style>
 </head>
@@ -1360,12 +1569,17 @@ def landing_html(
       <nav class="site-nav">
         <a href="#signature">Signature</a>
         <a href="#live-preview">Top picks</a>
+        <a href="#site-map">Architecture</a>
         <a href="#entry-points">Parcours</a>
         <a class="site-nav-cta" href="/dashboard?limit={limit}&min_percent={min_percent}">Ouvrir le dashboard</a>
       </nav>
     </div>
 
     <section class="hero-stage">
+      <div class="hero-decor">
+        <div class="hero-ball"></div>
+        <div class="hero-glow"></div>
+      </div>
       <div class="hero-copy">
         <span class="eyebrow">Football signal studio</span>
         <h1>Des pronostics foot plus propres, plus premium et plus lisibles.</h1>
@@ -1373,6 +1587,7 @@ def landing_html(
         <div class="hero-actions">
           <a class="site-btn" href="/dashboard?limit={limit}&min_percent={min_percent}">Entrer dans le dashboard</a>
           <a class="ghost-site-btn" href="/articles">Voir les news</a>
+          <a class="ghost-site-btn" href="/updates">Voir les nouveautes</a>
           <a class="ghost-site-btn" href="/botola">Explorer la Botola</a>
         </div>
         <div class="hero-facts">
@@ -1391,6 +1606,10 @@ def landing_html(
           <div class="hero-fact">
             <strong>{len(articles)}</strong>
             <span>angles editoriaux pour habiller le produit.</span>
+          </div>
+          <div class="hero-fact">
+            <strong>{len(site_updates)}</strong>
+            <span>mises a jour produit deja publiees.</span>
           </div>
         </div>
         <div class="market-strip">
@@ -1417,7 +1636,7 @@ def landing_html(
       </div>
     </section>
 
-    <section id="signature" class="section-block">
+    <section id="signature" class="section-block reveal">
       <div class="section-head">
         <div>
           <div class="mini-label">Direction du produit</div>
@@ -1426,17 +1645,17 @@ def landing_html(
         <p>Le projet garde la richesse d&apos;un site de pronostics populaire, mais remonte en gamme avec une meilleure hierarchie, une couleur plus maitrisee et une lecture plus rapide des signaux utiles.</p>
       </div>
       <div class="offer-grid">
-        <article class="offer-card">
+        <article class="offer-card reveal">
           <div class="offer-index">01</div>
           <strong>Un ton plus credible</strong>
           <p>Fond sable chaud, vert profond et accent or. Le rendu evoque l&apos;analyse et la confiance, pas le casino agressif ni la page surchargee.</p>
         </article>
-        <article class="offer-card">
+        <article class="offer-card reveal">
           <div class="offer-index">02</div>
           <strong>Une lecture plus rapide</strong>
           <p>Les picks importants remontent tout de suite. En quelques secondes, tu vois les matchs forts, le niveau de fiabilite et les boards annexes qui comptent.</p>
         </article>
-        <article class="offer-card">
+        <article class="offer-card reveal">
           <div class="offer-index">03</div>
           <strong>Un produit plus complet</strong>
           <p>Dashboard, fiches match, favoris personnels, flux editorial et poster Telegram travaillent ensemble au lieu de donner l&apos;impression de blocs isoles.</p>
@@ -1444,7 +1663,7 @@ def landing_html(
       </div>
     </section>
 
-    <section id="live-preview" class="section-block">
+    <section id="live-preview" class="section-block reveal">
       <div class="section-head">
         <div>
           <div class="mini-label">Lecture instantanee</div>
@@ -1456,45 +1675,109 @@ def landing_html(
         <div class="landing-stack">
           {render_landing_pick_cards(matches)}
         </div>
-        <div class="landing-news-grid">
-          {render_landing_article_teasers(articles)}
+        <div class="preview-side">
+          <section class="preview-side-block reveal">
+            <div class="preview-side-head">
+              <div>
+                <span>Editorial</span>
+                <strong>Clubs & joueurs</strong>
+              </div>
+              <a href="/articles">Voir tout</a>
+            </div>
+            <div class="landing-news-grid">
+              {render_landing_article_teasers(articles)}
+            </div>
+          </section>
+          <section class="preview-side-block reveal">
+            <div class="preview-side-head">
+              <div>
+                <span>Produit</span>
+                <strong>Nouveautes</strong>
+              </div>
+              <a href="/updates">Voir tout</a>
+            </div>
+            <div class="landing-news-grid">
+              {render_landing_update_teasers(site_updates)}
+            </div>
+          </section>
         </div>
       </div>
     </section>
 
-    <section id="entry-points" class="section-block">
+    <section id="site-map" class="section-block reveal">
+      <div class="section-head">
+        <div>
+          <div class="mini-label">Architecture du site</div>
+          <h2>Une colonne centrale claire, des branches utiles, aucun bloc perdu.</h2>
+        </div>
+        <p>La home doit expliquer tout le produit. Le dashboard porte l&apos;execution, les boards annexes elargissent la couverture, l&apos;editorial habille le site et le journal produit montre que la plateforme avance.</p>
+      </div>
+      <div class="architecture-grid">
+        <article class="architecture-card reveal">
+          <div class="architecture-step">01</div>
+          <strong>Accueil</strong>
+          <p>La page d&apos;entree pose le ton, presente le signal fort et oriente immediatement vers les axes qui comptent.</p>
+          <a class="architecture-link" href="/">Rester sur la vitrine</a>
+        </article>
+        <article class="architecture-card reveal">
+          <div class="architecture-step">02</div>
+          <strong>Dashboard</strong>
+          <p>Le coeur operationnel ou tu filtres les matchs, pilotes le seuil de confiance et pousses le contenu exploitable.</p>
+          <a class="architecture-link" href="/dashboard?limit={limit}&min_percent={min_percent}">Ouvrir le board principal</a>
+        </article>
+        <article class="architecture-card reveal">
+          <div class="architecture-step">03</div>
+          <strong>Boards</strong>
+          <p>Botola et Tennis etendent la lecture sans casser la structure. Chaque univers garde sa place au lieu d&apos;etre ajoute au hasard.</p>
+          <a class="architecture-link" href="/botola">Voir les boards secondaires</a>
+        </article>
+        <article class="architecture-card reveal">
+          <div class="architecture-step">04</div>
+          <strong>Editorial</strong>
+          <p>Articles et nouveautes donnent du contexte, de la credibilite et une preuve visible que le site est vivant.</p>
+          <a class="architecture-link" href="/articles">Lire le flux editorial</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="entry-points" class="section-block reveal">
       <div class="section-head">
         <div>
           <div class="mini-label">Parcours rapides</div>
-          <h2>Quatre portes d&apos;entree claires dans le produit.</h2>
+          <h2>Des parcours alignes avec la logique du produit.</h2>
         </div>
-        <p>Chaque bloc ouvre une partie utile du site sans perdre l&apos;utilisateur dans une navigation trop dense.</p>
+        <p>Chaque bloc a maintenant une fonction nette dans l&apos;architecture globale. Les liens ne se battent plus entre eux et gardent la meme hierarchie visuelle.</p>
       </div>
       <div class="collection-grid">
-        <a class="collection-card" href="/dashboard?limit={limit}&min_percent={min_percent}">
+        <a class="collection-card reveal" href="/dashboard?limit={limit}&min_percent={min_percent}">
           <span>Control room</span>
           <strong>Dashboard premium</strong>
           <p>La vue operationnelle pour les picks classes, les favoris embarques, les liens match et l&apos;affiche Telegram.</p>
         </a>
-        <a class="collection-card" href="/botola">
+        <a class="collection-card reveal" href="/botola">
           <span>Maroc</span>
           <strong>Botola Pro</strong>
           <p>Une porte locale lisible, pensee pour donner au projet une vraie couleur marocaine et une entree editorialement forte.</p>
         </a>
-        <a class="collection-card" href="/tennis">
+        <a class="collection-card reveal" href="/tennis">
           <span>Multi-board</span>
           <strong>Tennis World</strong>
           <p>Un second board pour montrer que GABFOOT peut aussi traiter d&apos;autres flux sans casser son identite visuelle.</p>
         </a>
-        <a class="collection-card" href="/articles">
+        <a class="collection-card reveal" href="/articles">
           <span>Editorial</span>
           <strong>Clubs & joueurs</strong>
           <p>Le contenu qui donne du relief a la page, nourrit le partage et rapproche la plateforme d&apos;un vrai media produit.</p>
         </a>
+        <a class="collection-card reveal" href="/updates">
+          <span>Produit</span>
+          <strong>Nouveautes & updates</strong>
+          <p>Le journal des ameliorations du site pour montrer que GABFOOT evolue, s'enrichit et garde un rythme de publication visible.</p>
+        </a>
       </div>
     </section>
 
-    <footer class="site-footer">
+    <footer class="site-footer reveal">
       <div>
         <h3>GABFOOT</h3>
         <p>La page d&apos;accueil pose maintenant une vraie identite: moins chargee, plus premium, plus nette. Le coeur operationnel reste accessible sur <a href="/dashboard">/dashboard</a> pour piloter les picks, Telegram et les boards annexes.</p>
@@ -1504,6 +1787,7 @@ def landing_html(
         <a href="/image" target="_blank">Voir le poster</a>
         <a href="/botola">Pronostics Botola</a>
         <a href="/articles">Articles football</a>
+        <a href="/updates">Nouveautes produit</a>
       </div>
     </footer>
   </div>
@@ -2025,6 +2309,25 @@ def page_html(
     tennis_table = render_tennis_table(tennis)
     article_cards = render_articles_grid(articles)
     market_strip = render_market_strip(matches, botola)
+    if DASHBOARD_HERO_IMAGE_PATH.exists():
+        dashboard_hero_visual = f"""
+        <div class="hero-media">
+          <img class="hero-media-image" src="/dashboard-hero.jpg" alt="Visuel premium GABFOOT pour le dashboard">
+          <div class="hero-media-overlay">
+            <div class="hero-badge">
+              <strong>{avg_confidence}%</strong>
+              <span>Fiabilite moyenne du board actif avec un filtre fixe a {min_percent}% minimum.</span>
+            </div>
+          </div>
+        </div>
+        """
+    else:
+        dashboard_hero_visual = f"""
+        <div class="hero-badge">
+          <strong>{avg_confidence}%</strong>
+          <span>Fiabilite moyenne du board actif avec un filtre fixe a {min_percent}% minimum.</span>
+        </div>
+        """
 
     image_block = ""
     if card_path and card_path.exists():
@@ -2190,7 +2493,7 @@ def page_html(
     }}
     .hero-top {{
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 1.04fr) minmax(320px, .96fr);
       gap: 18px;
       align-items: start;
     }}
@@ -2208,15 +2511,51 @@ def page_html(
       letter-spacing: .12em;
       text-transform: uppercase;
     }}
+    .hero-media {{
+      position: relative;
+      min-height: 320px;
+      border-radius: 30px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      background:
+        linear-gradient(180deg, rgba(7,17,12,.18), rgba(7,17,12,.58)),
+        radial-gradient(circle at 18% 18%, rgba(225,188,103,.24), transparent 24%);
+    }}
+    .hero-media::after {{
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.04), rgba(0,0,0,.42)),
+        linear-gradient(90deg, transparent 12%, rgba(248,243,232,.10) 12.5%, rgba(248,243,232,.10) 12.9%, transparent 13.3%, transparent 86.7%, rgba(248,243,232,.10) 87.1%, rgba(248,243,232,.10) 87.5%, transparent 88%);
+    }}
+    .hero-media-image {{
+      width: 100%;
+      height: 100%;
+      min-height: 320px;
+      object-fit: cover;
+      display: block;
+    }}
+    .hero-media-overlay {{
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: end;
+      justify-content: end;
+      padding: 18px;
+    }}
     .hero-badge {{
       display: grid;
       gap: 2px;
       min-width: 170px;
       padding: 16px 18px;
       border-radius: 22px;
-      background: rgba(255,255,255,.08);
+      background: rgba(7,17,12,.56);
       border: 1px solid rgba(255,255,255,.12);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 16px 32px rgba(0,0,0,.18);
+      backdrop-filter: blur(10px);
     }}
     .hero-badge strong {{
       font-family: "Bricolage Grotesque", sans-serif;
@@ -3216,6 +3555,8 @@ def page_html(
       .wrap {{ padding: 16px 14px 104px; }}
       .hero {{ padding: 22px 18px; }}
       .hero-top {{ grid-template-columns: 1fr; }}
+      .hero-media {{ min-height: 280px; }}
+      .hero-media-image {{ min-height: 280px; }}
       h1 {{ font-size: 38px; }}
       .sub {{ font-size: 16px; }}
       .hero-stats {{ grid-template-columns: 1fr 1fr; }}
@@ -3252,10 +3593,7 @@ def page_html(
             <a class="nav-link" href="#articles-zone">Articles</a>
           </div>
         </div>
-        <div class="hero-badge">
-          <strong>{avg_confidence}%</strong>
-          <span>Fiabilite moyenne du board actif avec un filtre fixe a {min_percent}% minimum.</span>
-        </div>
+        {dashboard_hero_visual}
       </div>
 
       <div class="hero-overview">
@@ -3442,73 +3780,132 @@ def render_collection(title: str, subtitle: str, content: str) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(title)} - GABFOOT</title>
   <style>
+    :root {{
+      --canvas: #f4f0e7;
+      --canvas-2: #efe5d4;
+      --paper: rgba(255, 252, 246, 0.84);
+      --paper-strong: #fffdf8;
+      --ink: #10281f;
+      --ink-soft: #5f6f66;
+      --forest: #1e5b43;
+      --gold: #c89a2b;
+      --line: rgba(16, 40, 31, 0.10);
+      --line-strong: rgba(16, 40, 31, 0.18);
+      --shadow: 0 24px 60px rgba(19, 39, 30, 0.12);
+    }}
+    * {{ box-sizing:border-box; }}
     body {{
-      margin:0; font-family:"DejaVu Sans", sans-serif; color:#edf6ee;
+      margin:0; font-family:"Source Sans 3", "DejaVu Sans", sans-serif; color:var(--ink);
       background:
-        radial-gradient(circle at top left, rgba(87, 190, 98, 0.16), transparent 24%),
-        radial-gradient(circle at 85% 10%, rgba(197, 255, 120, 0.10), transparent 18%),
-        linear-gradient(180deg, #050c08 0%, #0b1711 48%, #07120b 100%);
+        radial-gradient(circle at 0% 0%, rgba(200,154,43,.18), transparent 28%),
+        radial-gradient(circle at 100% 10%, rgba(30,91,67,.12), transparent 22%),
+        linear-gradient(180deg, var(--canvas) 0%, var(--canvas-2) 100%);
     }}
-    .wrap {{ max-width:1100px; margin:0 auto; padding:24px 18px 52px; }}
+    a {{ color:inherit; }}
+    .wrap {{ max-width:1240px; margin:0 auto; padding:16px 20px 56px; }}
     .hero, .panel {{
-      border:1px solid rgba(119,255,162,.18); border-radius:28px; background:rgba(11,20,16,.82);
-      box-shadow:0 22px 60px rgba(0,0,0,.32); backdrop-filter: blur(16px);
+      border:1px solid rgba(255,255,255,.46); border-radius:30px; background:var(--paper);
+      box-shadow:var(--shadow); backdrop-filter: blur(14px);
     }}
-    .hero {{ padding:24px; position:relative; overflow:hidden; }}
+    .hero {{ padding:28px; position:relative; overflow:hidden; }}
     .hero::before {{
       content:""; position:absolute; inset:0;
       background:
-        radial-gradient(circle at 20% 0%, rgba(124,255,107,.18), transparent 28%),
-        radial-gradient(circle at 100% 10%, rgba(116,245,255,.10), transparent 22%);
+        radial-gradient(circle at 16% 0%, rgba(200,154,43,.14), transparent 28%),
+        radial-gradient(circle at 100% 10%, rgba(30,91,67,.12), transparent 22%),
+        linear-gradient(90deg, transparent 14%, rgba(30,91,67,.08) 14.4%, rgba(30,91,67,.08) 14.8%, transparent 15.2%, transparent 84.8%, rgba(30,91,67,.08) 85.2%, rgba(30,91,67,.08) 85.6%, transparent 86%);
       pointer-events:none;
     }}
-    h1 {{ margin:0; font-size:38px; color:#8cff72; position:relative; z-index:1; }}
-    .sub {{ margin-top:8px; color:#aebcaf; position:relative; z-index:1; }}
-    .links {{ display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; }}
+    .hero-layout {{
+      position:relative; z-index:1; display:grid; grid-template-columns:minmax(0, 1.15fr) minmax(280px, .85fr); gap:22px; align-items:start;
+    }}
+    h1 {{
+      margin:10px 0 0; font-family:"Bricolage Grotesque", sans-serif; font-size:clamp(2.5rem, 5vw, 4rem);
+      line-height:.95; letter-spacing:-.04em; color:var(--ink);
+    }}
+    .eyebrow {{
+      display:inline-flex; width:max-content; min-height:34px; align-items:center; padding:0 12px; border-radius:999px;
+      background:rgba(200,154,43,.14); color:#885f1b; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    }}
+    .sub {{ margin-top:12px; color:var(--ink-soft); position:relative; z-index:1; font-size:16px; line-height:1.6; max-width:720px; }}
+    .links {{ display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }}
     .links a {{
-      color:#edf6ee; text-decoration:none; border:1px solid rgba(119,255,162,.14); border-radius:999px; padding:10px 14px;
-      background:rgba(255,255,255,.04); transition: transform .18s ease, background .18s ease, border-color .18s ease;
+      color:var(--ink); text-decoration:none; border:1px solid var(--line); border-radius:999px; padding:10px 14px;
+      background:rgba(255,255,255,.68); transition: transform .18s ease, background .18s ease, border-color .18s ease;
       position:relative; z-index:1;
     }}
-    .links a:hover, .links a:active {{ transform:translateY(-1px); background:rgba(124,255,107,.10); border-color:rgba(119,255,162,.28); }}
-    .panel {{ padding:18px; margin-top:18px; }}
-    .match-list {{ display:grid; gap:14px; }}
-    .match-card {{
-      padding:17px; border-radius:22px; background:rgba(16,28,21,.94); border:1px solid rgba(124,255,107,.10);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03); transition: transform .18s ease, border-color .18s ease;
+    .links a:hover, .links a:active {{ transform:translateY(-1px); background:var(--paper-strong); border-color:var(--line-strong); }}
+    .hero-summary {{
+      padding:20px; border-radius:24px; border:1px solid var(--line);
+      background:linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.58));
+      display:grid; gap:14px;
     }}
-    .match-card:hover {{ transform:translateY(-2px); border-color:rgba(124,255,107,.18); }}
+    .hero-summary strong {{
+      display:block; font-family:"Bricolage Grotesque", sans-serif; font-size:28px; line-height:1.02; letter-spacing:-.03em;
+    }}
+    .hero-summary p {{ margin:0; color:var(--ink-soft); font-size:14px; line-height:1.6; }}
+    .hero-summary ul {{ margin:0; padding-left:18px; color:var(--ink-soft); display:grid; gap:8px; }}
+    .panel {{ padding:22px; margin-top:18px; }}
+    .match-list {{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; align-items:start; }}
+    .match-card {{
+      padding:18px; border-radius:24px; background:linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,250,241,.92));
+      border:1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255,255,255,.62);
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+      display:flex; flex-direction:column; min-height:100%;
+    }}
+    .match-card:hover {{ transform:translateY(-2px); border-color:var(--line-strong); box-shadow:0 18px 34px rgba(20,57,43,.10); }}
     .meta-row {{ display:flex; justify-content:space-between; gap:14px; align-items:flex-start; }}
-    .league {{ color:#8cff72; font-size:14px; font-weight:700; }}
-    .kickoff {{ color:#aebcaf; font-size:13px; margin-top:4px; }}
-    .pick-badge {{ min-width:92px; border-radius:18px; background:linear-gradient(180deg, rgba(19,38,23,.95), rgba(13,27,17,.95)); padding:8px 10px; border:1px solid rgba(124,255,107,.22); text-align:center; }}
-    .pick-value {{ display:block; font-size:24px; font-weight:800; color:#8cff72; }}
-    .pick-percent {{ display:block; font-size:13px; color:#aebcaf; }}
-    .teams, .article-title {{ margin-top:12px; font-size:24px; font-weight:700; }}
-    .teams span {{ color:#aebcaf; font-size:16px; font-weight:500; }}
+    .league {{ color:#8b6220; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }}
+    .kickoff {{ color:var(--ink-soft); font-size:13px; margin-top:4px; }}
+    .pick-badge {{ min-width:92px; border-radius:18px; background:rgba(255,255,255,.78); padding:8px 10px; border:1px solid rgba(16,40,31,.10); text-align:center; }}
+    .pick-value {{ display:block; font-size:24px; font-weight:800; color:var(--forest); }}
+    .pick-percent {{ display:block; font-size:13px; color:var(--ink-soft); }}
+    .teams, .article-title {{
+      margin-top:12px; font-family:"Bricolage Grotesque", sans-serif; font-size:24px; font-weight:700; line-height:1.08; letter-spacing:-.03em;
+    }}
+    .teams span {{ color:var(--ink-soft); font-size:16px; font-weight:500; }}
     .stats-grid {{ margin-top:14px; display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }}
-    .stats-grid div {{ padding:11px 12px; border-radius:16px; background:rgba(255,255,255,.035); border:1px solid rgba(140,255,114,.08); }}
-    .stats-grid strong {{ display:block; color:#d8ff7a; font-size:12px; margin-bottom:5px; }}
-    .stats-grid span {{ display:block; color:#edf6ee; font-size:14px; line-height:1.35; }}
-    .why {{ margin-top:12px; font-size:14px; color:#aebcaf; }}
-    .tennis-state {{ min-width:110px; padding:8px 10px; border-radius:14px; text-align:center; color:#d8ff7a; background:#132617; border:1px solid #2f5b39; font-size:13px; font-weight:700; }}
-    .article-link {{ display:inline-flex; margin-top:14px; color:#8cff72; text-decoration:none; font-weight:800; }}
+    .stats-grid div {{ padding:11px 12px; border-radius:16px; background:rgba(255,255,255,.58); border:1px solid rgba(16,40,31,.08); }}
+    .stats-grid strong {{ display:block; color:#8b6220; font-size:12px; margin-bottom:5px; text-transform:uppercase; letter-spacing:.08em; }}
+    .stats-grid span {{ display:block; color:var(--ink); font-size:14px; line-height:1.35; }}
+    .why {{ margin-top:12px; font-size:14px; color:var(--ink-soft); flex:1 1 auto; }}
+    .tennis-state {{ min-width:110px; padding:8px 10px; border-radius:14px; text-align:center; color:var(--forest); background:rgba(30,91,67,.08); border:1px solid rgba(30,91,67,.20); font-size:13px; font-weight:700; }}
+    .article-link {{ display:inline-flex; margin-top:14px; color:var(--forest); text-decoration:none; font-weight:800; }}
     @media (max-width: 980px) {{
+      .hero-layout, .match-list {{ grid-template-columns:1fr; }}
       .stats-grid {{ grid-template-columns:1fr; }}
       .teams, .article-title {{ font-size:20px; }}
+    }}
+    @media (max-width: 760px) {{
+      .wrap {{ padding:14px 14px 34px; }}
+      .hero {{ padding:22px; }}
     }}
   </style>
 </head>
 <body>
   <div class="wrap">
     <section class="hero">
-      <h1>{html.escape(title)}</h1>
-      <div class="sub">{html.escape(subtitle)}</div>
-      <div class="links">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/botola">Botola Pro</a>
-        <a href="/tennis">Tennis World</a>
-        <a href="/articles">Articles clubs & joueurs</a>
+      <div class="hero-layout">
+        <div>
+          <span class="eyebrow">Section GABFOOT</span>
+          <h1>{html.escape(title)}</h1>
+          <div class="sub">{html.escape(subtitle)}</div>
+          <div class="links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/botola">Botola Pro</a>
+            <a href="/tennis">Tennis World</a>
+            <a href="/articles">Articles clubs & joueurs</a>
+          </div>
+        </div>
+        <aside class="hero-summary">
+          <strong>Structure plus nette</strong>
+          <p>Cette section reprend maintenant la meme logique visuelle que la home: un en-tete clair, une grille stable et des cartes alignees.</p>
+          <ul>
+            <li>hierarchie de lecture immediate</li>
+            <li>cartes de contenu alignees verticalement</li>
+            <li>palette et architecture coherentes avec le reste du site</li>
+          </ul>
+        </aside>
       </div>
     </section>
     <section class="panel">
@@ -3559,6 +3956,33 @@ def render_article_cards(articles: list[dict[str, str]]) -> str:
     return "".join(cards) or '<div class="why">Aucun article remonte pour le moment.</div>'
 
 
+def render_update_cards(updates: list[dict[str, object]]) -> str:
+    cards = []
+    for item in updates:
+        bullets = item.get("bullets", [])
+        bullet_html = "".join(f"<li>{html.escape(str(bullet))}</li>" for bullet in bullets[:4])
+        cards.append(
+            f"""
+            <article class="match-card">
+              <div class="meta-row">
+                <div>
+                  <div class="league">{html.escape(str(item.get("label", "Produit")))}</div>
+                  <div class="kickoff">{html.escape(str(item.get("date", "")))}</div>
+                </div>
+                <div class="pick-badge">
+                  <span class="pick-value">NEW</span>
+                  <span class="pick-percent">update</span>
+                </div>
+              </div>
+              <div class="article-title">{html.escape(str(item.get("title", "")))}</div>
+              <div class="why">{html.escape(str(item.get("summary", "")))}</div>
+              <ul class="why" style="margin:12px 0 0 18px;">{bullet_html}</ul>
+            </article>
+            """
+        )
+    return "".join(cards) or '<div class="why">Aucune mise a jour publiee pour le moment.</div>'
+
+
 class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -3580,6 +4004,9 @@ class AppHandler(BaseHTTPRequestHandler):
 
         if parsed.path == "/image":
             return self.serve_image()
+
+        if parsed.path == "/dashboard-hero.jpg":
+            return self.serve_file(DASHBOARD_HERO_IMAGE_PATH, "image/jpeg", cache_control="public, max-age=86400")
 
         if parsed.path == "/icon.png":
             return self.serve_file(ICON_PATH, "image/png", cache_control="public, max-age=86400")
@@ -3683,6 +4110,10 @@ class AppHandler(BaseHTTPRequestHandler):
             if stale:
                 subtitle += " - donnees en cache"
             return self.render_html(render_collection("Articles clubs & joueurs", subtitle, render_article_cards(articles)))
+
+        if parsed.path == "/updates":
+            subtitle = "Journal produit GABFOOT, nouveautes visibles et mises a jour de la plateforme"
+            return self.render_html(render_collection("Nouveautes & mises a jour", subtitle, render_update_cards(load_site_updates())))
 
         force_refresh = "_refresh" in params or params.get("force", ["0"])[0] == "1"
         if force_refresh:

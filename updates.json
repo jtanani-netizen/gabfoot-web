@@ -1,0 +1,90 @@
+[
+  {
+    "date": "17 mars 2026",
+    "label": "Produit",
+    "title": "Lancement du radar editorial sur l'accueil",
+    "summary": "La home met maintenant en avant les news clubs et joueurs avec une lecture plus premium et une entree plus claire dans le contenu.",
+    "bullets": [
+      "teasers news plus visibles sur la home",
+      "mise en avant d'un article fort dans le hero",
+      "parcours plus lisible entre dashboard, Botola et contenu"
+    ]
+  },
+  {
+    "date": "17 mars 2026",
+    "label": "Produit",
+    "title": "Ouverture de la page Nouveautes & mises a jour",
+    "summary": "GABFOOT dispose maintenant d'une page dediee pour raconter les evolutions du produit et rassurer les visiteurs sur le rythme des ameliorations.",
+    "bullets": [
+      "nouvelle page /updates reliee a l'accueil",
+      "teasers de nouveautes visibles sans entrer dans le dashboard",
+      "base simple pour publier les prochaines evolutions du site"
+    ]
+  },
+  {
+    "date": "16 mars 2026",
+    "label": "UX",
+    "title": "Refonte premium du dashboard GABFOOT",
+    "summary": "Le board principal gagne une hierarchie plus nette pour les picks, les favoris, les boards annexes et le poster Telegram.",
+    "bullets": [
+      "lecture plus rapide des matchs a forte confiance",
+      "favoris locaux pour garder les affiches importantes",
+      "navigation plus propre vers match, Botola, tennis et articles"
+    ]
+  },
+  {
+    "date": "16 mars 2026",
+    "label": "Contenu",
+    "title": "Arrivee des sections Botola et Tennis World",
+    "summary": "Le site ne se limite plus aux picks globaux et commence a prendre la forme d'un media produit avec des portes d'entree editoriales plus fortes.",
+    "bullets": [
+      "Botola Pro pour la premiere ligue marocaine",
+      "Tennis World pour ATP et WTA",
+      "structure pensee pour accueillir plus de nouveautes chaque semaine"
+    ]
+  },
+  {
+    "date": "16 mars 2026",
+    "label": "Editorial",
+    "title": "Mise en avant des articles clubs et joueurs",
+    "summary": "Le produit melange maintenant picks et contenu editorial pour donner plus de relief a la home et renforcer la credibilite du projet.",
+    "bullets": [
+      "articles integres au hero et a la preview de la home",
+      "page /articles plus utile pour alimenter le partage",
+      "meilleur lien entre signal de match et contexte football"
+    ]
+  },
+  {
+    "date": "16 mars 2026",
+    "label": "Distribution",
+    "title": "Poster Telegram mieux integre au site",
+    "summary": "L'affiche de sortie n'est plus un bloc isole et fait maintenant partie du parcours principal du produit.",
+    "bullets": [
+      "poster visible depuis la home et le dashboard",
+      "accroche plus claire pour la diffusion Telegram",
+      "coherence visuelle entre board principal et visuel partage"
+    ]
+  },
+  {
+    "date": "15 mars 2026",
+    "label": "Mobile",
+    "title": "Base Android connectee au site public",
+    "summary": "L'application Android pointe sur l'URL publique du projet pour garder un parcours simple entre mobile et web.",
+    "bullets": [
+      "WebView branchee sur l'URL publique GABFOOT",
+      "meme univers visuel entre app et site",
+      "base prete pour les prochains tests Android"
+    ]
+  },
+  {
+    "date": "15 mars 2026",
+    "label": "Infra",
+    "title": "Deploiement actif sur Hugging Face Spaces",
+    "summary": "Le site reste publiable et accessible via l'espace Hugging Face, avec une structure de projet deja preparee pour l'exploitation.",
+    "bullets": [
+      "deploiement Docker deja en place",
+      "URL publique stable pour les tests et les demos",
+      "base prete pour les prochaines mises a jour produit"
+    ]
+  }
+]
