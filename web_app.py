@@ -1181,7 +1181,6 @@ def landing_html(
         radial-gradient(circle at 50% 100%, rgba(78,136,93,.14), transparent 32%),
         linear-gradient(135deg, rgba(255,251,245,.96), rgba(246,236,221,.98));
       box-shadow: var(--shadow);
-      min-height: 640px;
     }}
     .hero-stage::before {{
       content:""; position:absolute; inset:auto -90px -90px auto; width:260px; height:260px; border-radius:50%;
@@ -2509,7 +2508,7 @@ def page_html(
     .hero {{
       position: relative;
       overflow: hidden;
-      padding: 28px;
+      padding: 24px;
       border-radius: 34px;
       background:
         radial-gradient(circle at top right, rgba(225,188,103,.22), transparent 28%),
@@ -2548,7 +2547,7 @@ def page_html(
     .hero-top {{
       display: grid;
       grid-template-columns: minmax(0, 1.04fr) minmax(320px, .96fr);
-      gap: 22px;
+      gap: 18px;
       align-items: start;
     }}
     .hero-quickstrip {{
@@ -2585,7 +2584,7 @@ def page_html(
     }}
     .hero-media {{
       position: relative;
-      min-height: 320px;
+      min-height: 240px;
       border-radius: 30px;
       overflow: hidden;
       border: 1px solid rgba(255,255,255,.12);
@@ -2606,7 +2605,7 @@ def page_html(
     .hero-media-image {{
       width: 100%;
       height: 100%;
-      min-height: 320px;
+      min-height: 240px;
       object-fit: cover;
       display: block;
     }}
@@ -2701,7 +2700,7 @@ def page_html(
       display: grid;
       grid-template-columns: 1.06fr .94fr;
       gap: 18px;
-      margin-top: 24px;
+      margin-top: 18px;
       align-items: stretch;
     }}
     .hero-stats {{
@@ -2892,15 +2891,15 @@ def page_html(
     .hero-strip {{
       display: grid;
       gap: 16px;
-      margin-top: 22px;
+      margin-top: 16px;
       grid-template-columns: 1.08fr .92fr;
     }}
     .studio-card,
     .editorial-card {{
       position: relative;
       overflow: hidden;
-      min-height: 260px;
-      padding: 22px;
+      min-height: 220px;
+      padding: 20px;
       border-radius: 28px;
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.08);
@@ -3648,8 +3647,8 @@ def page_html(
       .wrap {{ padding: 16px 14px 104px; }}
       .hero {{ padding: 22px 18px; }}
       .hero-top {{ grid-template-columns: 1fr; }}
-      .hero-media {{ min-height: 280px; }}
-      .hero-media-image {{ min-height: 280px; }}
+      .hero-media {{ min-height: 210px; }}
+      .hero-media-image {{ min-height: 210px; }}
       h1 {{ font-size: 38px; }}
       .sub {{ font-size: 16px; }}
       .hero-stats {{ grid-template-columns: 1fr 1fr; }}
