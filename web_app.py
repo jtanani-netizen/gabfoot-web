@@ -1146,7 +1146,8 @@ def landing_html(
     .site-topbar {{
       display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom: 16px;
       padding: 14px 18px; border-radius: 24px; border:1px solid rgba(255,255,255,.48);
-      background: rgba(255,255,255,.48); backdrop-filter: blur(14px);
+      background: rgba(255,255,255,.56); backdrop-filter: blur(14px);
+      box-shadow: 0 16px 34px rgba(20,57,43,.08);
     }}
     .site-brand {{ display:flex; align-items:center; gap:14px; text-decoration:none; color:var(--ink); }}
     .site-brand-mark {{
@@ -1180,6 +1181,7 @@ def landing_html(
         radial-gradient(circle at 50% 100%, rgba(78,136,93,.14), transparent 32%),
         linear-gradient(135deg, rgba(255,251,245,.96), rgba(246,236,221,.98));
       box-shadow: var(--shadow);
+      min-height: 640px;
     }}
     .hero-stage::before {{
       content:""; position:absolute; inset:auto -90px -90px auto; width:260px; height:260px; border-radius:50%;
@@ -1236,6 +1238,20 @@ def landing_html(
       margin:0; max-width: 660px; color:var(--ink-soft); font-size:17px; line-height:1.58;
     }}
     .hero-actions {{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }}
+    .hero-rail {{
+      display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;
+    }}
+    .hero-rail-item {{
+      padding:14px 16px; border-radius:20px; border:1px solid rgba(16,40,31,.10);
+      background:linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,249,240,.88));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.68);
+    }}
+    .hero-rail-item strong {{
+      display:block; font-size:15px; font-weight:800; letter-spacing:-.01em;
+    }}
+    .hero-rail-item span {{
+      display:block; margin-top:6px; color:var(--ink-soft); font-size:13px; line-height:1.5;
+    }}
     .site-btn, .ghost-site-btn, .outline-btn {{
       min-height:50px; padding:0 18px; border-radius:16px; display:inline-flex; align-items:center; justify-content:center;
       text-decoration:none; font-weight:800; transition:transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
@@ -1327,7 +1343,7 @@ def landing_html(
     }}
     .section-block {{
       margin-top:24px; padding:28px; border-radius:var(--radius-xl); border:1px solid rgba(255,255,255,.44);
-      background:var(--paper); box-shadow: var(--shadow); backdrop-filter: blur(14px);
+      background:var(--paper); box-shadow: 0 26px 62px rgba(19, 39, 30, 0.10); backdrop-filter: blur(14px);
       position:relative; overflow:hidden;
     }}
     .section-block::before {{
@@ -1371,7 +1387,14 @@ def landing_html(
       height:100%; padding:18px; border-radius:26px; border:1px solid var(--line);
       background:linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,249,239,.92));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.64);
-      display:flex; flex-direction:column; gap:16px;
+      display:flex; flex-direction:column; gap:16px; position:relative; overflow:hidden;
+    }}
+    .preview-side-block::before,
+    .architecture-card::before,
+    .collection-card::before {{
+      content:""; position:absolute; inset:0 auto auto 0; width:100%; height:4px;
+      background:linear-gradient(90deg, var(--forest), rgba(200,154,43,.58), transparent);
+      opacity:.9;
     }}
     .preview-side-head {{
       display:flex; align-items:flex-start; justify-content:space-between; gap:14px;
@@ -1452,6 +1475,7 @@ def landing_html(
         radial-gradient(circle at top right, rgba(200,154,43,.16), transparent 34%),
         linear-gradient(180deg, rgba(255,255,255,.92), rgba(250,244,233,.96));
       position:relative; overflow:hidden; display:flex; flex-direction:column; gap:14px;
+      box-shadow: 0 18px 38px rgba(20,57,43,.08);
     }}
     .architecture-card::after {{
       content:""; position:absolute; inset:auto -26px -34px auto; width:118px; height:118px; border-radius:50%;
@@ -1503,6 +1527,10 @@ def landing_html(
       color:var(--ink-soft); font-size:14px; line-height:1.65; text-decoration:none;
     }}
     .site-footer-links {{ display:grid; gap:8px; justify-items:start; }}
+    .site-footer-links a {{
+      min-height:40px; padding:0 14px; border-radius:999px; display:inline-flex; align-items:center;
+      background:rgba(255,255,255,.52); border:1px solid rgba(16,40,31,.08);
+    }}
     .landing-empty {{
       padding:18px; border-radius:18px; border:1px dashed rgba(16,40,31,.16);
       color:var(--ink-soft); background:rgba(255,255,255,.46); font-size:14px; line-height:1.6;
@@ -1544,7 +1572,7 @@ def landing_html(
       .hero-stage {{ padding:18px; }}
       .hero-ball {{ width:54px; height:54px; right:16px; top:18px; }}
       .hero-copy h1 {{ font-size: clamp(3rem, 15vw, 4.8rem); }}
-      .preview-grid, .preview-side, .hero-facts, .offer-grid, .architecture-grid, .collection-grid {{ grid-template-columns:1fr; }}
+      .preview-grid, .preview-side, .hero-facts, .hero-rail, .offer-grid, .architecture-grid, .collection-grid {{ grid-template-columns:1fr; }}
       .poster-card, .editorial-card, .landing-article-card, .site-footer {{ grid-template-columns:1fr; }}
       .poster-visual, .editorial-thumb, .landing-article-image {{ width:100%; height:220px; }}
       .section-head {{ grid-template-columns:1fr; }}
@@ -1589,6 +1617,20 @@ def landing_html(
           <a class="ghost-site-btn" href="/articles">Voir les news</a>
           <a class="ghost-site-btn" href="/updates">Voir les nouveautes</a>
           <a class="ghost-site-btn" href="/botola">Explorer la Botola</a>
+        </div>
+        <div class="hero-rail">
+          <div class="hero-rail-item">
+            <strong>Board principal</strong>
+            <span>Les picks les plus solides remontent avant le reste.</span>
+          </div>
+          <div class="hero-rail-item">
+            <strong>Radar editorial</strong>
+            <span>Le flux news complete le signal au lieu de le parasiter.</span>
+          </div>
+          <div class="hero-rail-item">
+            <strong>Sortie Telegram</strong>
+            <span>Le site produit aussi une image prete a publier.</span>
+          </div>
         </div>
         <div class="hero-facts">
           <div class="hero-fact">
@@ -2314,6 +2356,7 @@ def page_html(
         <div class="hero-media">
           <img class="hero-media-image" src="/dashboard-hero.jpg" alt="Visuel premium GABFOOT pour le dashboard">
           <div class="hero-media-overlay">
+            <div class="hero-media-tag">Visual studio</div>
             <div class="hero-badge">
               <strong>{avg_confidence}%</strong>
               <span>Fiabilite moyenne du board actif avec un filtre fixe a {min_percent}% minimum.</span>
@@ -2485,6 +2528,17 @@ def page_html(
         linear-gradient(120deg, rgba(255,255,255,.04), transparent 36%),
         radial-gradient(circle at 12% 18%, rgba(225,188,103,.18), transparent 22%);
     }}
+    .hero::after {{
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: .34;
+      background:
+        radial-gradient(circle at 50% 102%, rgba(225,188,103,.24), transparent 24%),
+        linear-gradient(90deg, transparent 14%, rgba(248,243,232,.08) 14.4%, rgba(248,243,232,.08) 14.8%, transparent 15.2%, transparent 84.8%, rgba(248,243,232,.08) 85.2%, rgba(248,243,232,.08) 85.6%, transparent 86%),
+        linear-gradient(transparent 78%, rgba(248,243,232,.08) 78.4%, rgba(248,243,232,.08) 78.8%, transparent 79.2%);
+    }}
     .hero-top,
     .hero-overview,
     .hero-strip {{
@@ -2494,8 +2548,26 @@ def page_html(
     .hero-top {{
       display: grid;
       grid-template-columns: minmax(0, 1.04fr) minmax(320px, .96fr);
-      gap: 18px;
+      gap: 22px;
       align-items: start;
+    }}
+    .hero-quickstrip {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }}
+    .hero-quickstrip span {{
+      min-height: 36px;
+      padding: 0 13px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.10);
+      color: rgba(248,243,232,.88);
+      font-size: 13px;
+      font-weight: 700;
     }}
     .hero-kicker {{
       display: inline-flex;
@@ -2517,7 +2589,7 @@ def page_html(
       border-radius: 30px;
       overflow: hidden;
       border: 1px solid rgba(255,255,255,.12);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      box-shadow: 0 28px 50px rgba(6, 18, 13, .24), inset 0 1px 0 rgba(255,255,255,.04);
       background:
         linear-gradient(180deg, rgba(7,17,12,.18), rgba(7,17,12,.58)),
         radial-gradient(circle at 18% 18%, rgba(225,188,103,.24), transparent 24%);
@@ -2542,9 +2614,25 @@ def page_html(
       position: absolute;
       inset: 0;
       display: flex;
+      flex-direction: column;
       align-items: end;
-      justify-content: end;
+      justify-content: space-between;
       padding: 18px;
+    }}
+    .hero-media-tag {{
+      min-height: 34px;
+      padding: 0 12px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: rgba(7,17,12,.54);
+      border: 1px solid rgba(255,255,255,.10);
+      color: rgba(248,243,232,.88);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      backdrop-filter: blur(8px);
     }}
     .hero-badge {{
       display: grid;
@@ -2614,6 +2702,7 @@ def page_html(
       grid-template-columns: 1.06fr .94fr;
       gap: 18px;
       margin-top: 24px;
+      align-items: stretch;
     }}
     .hero-stats {{
       display: grid;
@@ -2624,7 +2713,7 @@ def page_html(
       padding: 16px 16px 15px;
       border-radius: 22px;
       border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.06);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
     }}
     .hero-stat-label {{
@@ -2685,6 +2774,8 @@ def page_html(
       border: 1px solid rgba(255,255,255,.10);
       background: rgba(255,255,255,.07);
       box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+      display: flex;
+      flex-direction: column;
     }}
     .control-label {{
       display: inline-flex;
@@ -3560,6 +3651,7 @@ def page_html(
       h1 {{ font-size: 38px; }}
       .sub {{ font-size: 16px; }}
       .hero-stats {{ grid-template-columns: 1fr 1fr; }}
+      .hero-quickstrip {{ display: grid; grid-template-columns: 1fr; }}
       .toolbar {{ align-items: stretch; }}
       .field,
       input,
@@ -3591,6 +3683,11 @@ def page_html(
             <a class="nav-link" href="#botola-zone">Botola</a>
             <a class="nav-link" href="#tennis-zone">Tennis</a>
             <a class="nav-link" href="#articles-zone">Articles</a>
+          </div>
+          <div class="hero-quickstrip">
+            <span>Board live</span>
+            <span>Botola + Tennis</span>
+            <span>Poster Telegram</span>
           </div>
         </div>
         {dashboard_hero_visual}
