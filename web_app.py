@@ -3080,7 +3080,9 @@ def page_html(
       letter-spacing: .02em;
     }}
     .table-shell {{
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
       border-radius: 22px;
       border: 1px solid rgba(19,33,28,.08);
       background: rgba(255,255,255,.60);
