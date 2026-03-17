@@ -731,6 +731,34 @@ def render_prediction_table(matches: list[InterestingMatch]) -> str:
     """
 
 
+def render_mobile_pick_cards(matches: list[InterestingMatch]) -> str:
+    if not matches:
+        return '<div class="footer">Aucun match ne passe le filtre actuel.</div>'
+
+    cards: list[str] = []
+    for match in matches:
+        cards.append(
+            f"""
+            <article class="mobile-pick-card {pick_theme(match.prediction)}">
+              <div class="mobile-pick-top">
+                <div>
+                  <div class="mobile-pick-league">{html.escape(match.tournament_name)}</div>
+                  <div class="mobile-pick-kickoff">{html.escape(fmt_kickoff(match.kickoff_utc))}</div>
+                </div>
+                <div class="mobile-pick-badge">
+                  <strong>{match.sureness_percent}%</strong>
+                  <span>{html.escape(match.prediction)}</span>
+                </div>
+              </div>
+              <h3>{html.escape(match.home_name)} <span>vs</span> {html.escape(match.away_name)}</h3>
+              <p>{html.escape(' • '.join(match.why[:2]))}</p>
+              <a class="mobile-pick-link" href="/match/{match.match_id}">Voir la fiche match</a>
+            </article>
+            """
+        )
+    return "".join(cards)
+
+
 def render_botola_table(botola: list[dict[str, object]]) -> str:
     grouped_rows: dict[str, list[str]] = {}
     ordered_slots: list[str] = []
@@ -2346,6 +2374,7 @@ def page_html(
     featured_article = articles[0] if articles else None
     avg_confidence = int(round(sum(match.sureness_percent for match in matches) / len(matches))) if matches else 0
     prediction_table = render_prediction_table(matches)
+    mobile_pick_cards = render_mobile_pick_cards(matches)
     botola_table = render_botola_table(botola)
     tennis_table = render_tennis_table(tennis)
     article_cards = render_articles_grid(articles)
@@ -3086,6 +3115,90 @@ def page_html(
       border: 1px solid rgba(19,33,28,.08);
       background: rgba(255,255,255,.60);
     }}
+    .mobile-picks {{
+      display: none;
+      gap: 12px;
+      margin-bottom: 14px;
+    }}
+    .mobile-pick-card {{
+      padding: 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(19,33,28,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(250,244,231,.94));
+      box-shadow: var(--shadow-soft);
+    }}
+    .mobile-pick-card.pick-home {{ box-shadow: inset 4px 0 0 rgba(38, 139, 92, .60), var(--shadow-soft); }}
+    .mobile-pick-card.pick-away {{ box-shadow: inset 4px 0 0 rgba(97, 142, 174, .60), var(--shadow-soft); }}
+    .mobile-pick-card.pick-draw {{ box-shadow: inset 4px 0 0 rgba(191, 143, 47, .60), var(--shadow-soft); }}
+    .mobile-pick-card.pick-mixed {{ box-shadow: inset 4px 0 0 rgba(184, 90, 57, .46), var(--shadow-soft); }}
+    .mobile-pick-top {{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }}
+    .mobile-pick-league {{
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }}
+    .mobile-pick-kickoff {{
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }}
+    .mobile-pick-badge {{
+      min-width: 92px;
+      padding: 8px 10px;
+      border-radius: 18px;
+      text-align:center;
+      background: rgba(20,56,44,.08);
+      border: 1px solid rgba(20,56,44,.10);
+    }}
+    .mobile-pick-badge strong {{
+      display:block;
+      font-family:"Bricolage Grotesque", sans-serif;
+      font-size: 24px;
+      line-height: 1;
+      color: var(--forest);
+    }}
+    .mobile-pick-badge span {{
+      display:block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }}
+    .mobile-pick-card h3 {{
+      margin: 14px 0 8px;
+      font-family:"Bricolage Grotesque", sans-serif;
+      font-size: 24px;
+      line-height: 1.06;
+      letter-spacing: -.03em;
+      color: var(--forest);
+    }}
+    .mobile-pick-card h3 span {{ color: var(--muted); font-size: 16px; }}
+    .mobile-pick-card p {{
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }}
+    .mobile-pick-link {{
+      margin-top: 14px;
+      display:inline-flex;
+      align-items:center;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 999px;
+      text-decoration:none;
+      color: var(--forest);
+      font-size: 13px;
+      font-weight: 800;
+      background: rgba(20,56,44,.08);
+    }}
     .prediction-table {{
       width: 100%;
       min-width: 980px;
@@ -3664,6 +3777,7 @@ def page_html(
       .compact-table-shell {{
         overflow-x: auto;
       }}
+      .mobile-picks {{ display: grid; }}
       .prediction-table {{ min-width: 760px; }}
       .bottom-dock {{ display: flex; }}
       .nav-links {{ display: none; }}
@@ -3760,6 +3874,9 @@ def page_html(
           <span class="footer">{len(matches)} match(s) retenu(s) dans ce run</span>
         </div>
         <p class="section-note">La lecture reste immediate: horaire, contexte, recommandation, taux de confiance et lien direct vers la fiche match.</p>
+        <div class="mobile-picks">
+          {mobile_pick_cards}
+        </div>
         {prediction_table}
       </section>
       {image_block}
